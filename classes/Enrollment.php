@@ -21,37 +21,85 @@ class Enrollment {
 	 * @param int $order_id
 	 * @return void
 	 */
-	public function process_order( $order_id ) {	
+	public function process_order( $order_id ) {
 		$order = new \WC_Order( $order_id );
-
-		// Check order contain courses
-		$has_course = false;
-
+		
 		foreach( $order->get_items() as $item_id => $item ) {
-			$product = $item->get_product();
+			// Enroll moodle user
+			if ( $item->get_quantity() == 1 ) {
+				$this->order	= $order;
+				$moodle_user_id = $this->get_moodle_user_id();
 
-			if ( $product->get_meta( 'moodle_course_id', true ) ) {
-				$has_course = true;
-				break;
+				if ( ! $moodle_user_id ) {
+					\MooWoodle\Util::log( 'Unable to enroll user, unable to create user in moodle' );
+				}
+				file_put_contents( WP_CONTENT_DIR . '/mo_file_log.txt', 'response_en:'. var_export("true", true) . "\n", FILE_APPEND );
+
+				$this->enrol_moodle_user( $moodle_user_id, $item );
+			} else if ( $item->get_quantity() > 1 ) {
+				$this->create_customer_default_group_on_order( $order_id, $item );
 			}
-		}
-
-		if ( ! $has_course ) {
-			\MooWoodle\Util::log( "Unable to enroll on order compleate. Order item is't linked with any course." );
-		}
-
-		// Enroll moodle user
-		if ( $has_course && ! $order->get_meta( 'moodle_user_enrolled', true ) ) {
-			$this->order	= $order;
-			$moodle_user_id = $this->get_moodle_user_id();
-
-			if ( ! $moodle_user_id ) {
-				\MooWoodle\Util::log( 'Unable to enroll user, unable to create user in moodle' );
-			}
-
-			$this->enrol_moodle_user( $moodle_user_id );
-		}
+		}	
 	}
+
+	function create_customer_default_group_on_order( $order_id, $item ) {
+		global $wpdb;
+		
+		$order = wc_get_order($order_id);
+		$user_id = $order->get_user_id();
+		$user_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
+	
+		$default_group_name = 'Classroom';
+	
+		// Check if the customer already has a default group
+		$customer_group = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id FROM " . $wpdb->prefix . "moowoodle_group WHERE user_id = %d AND name = %s", 
+				$user_id, 
+				$default_group_name
+			)
+		);
+		
+		// If no default group exists for this customer, create a new one
+		if (is_null($customer_group)) {
+			$wpdb->insert(
+				$wpdb->prefix . 'moowoodle_group',
+				array(
+					'name'      => $default_group_name,
+					'user_id'   => $user_id,
+					'order_id'  => $order_id,
+					'user_name' => $user_name,
+				),
+				array('%s', '%d', '%d', '%s')
+			);
+	
+			// Get the ID of the newly created default group
+			$group_id = $wpdb->insert_id;
+		} else {
+			// If the group exists, use its ID
+			$group_id = $customer_group->id;
+		}
+		$order->update_meta_data( 'moodle_group_created', true );
+		
+		$product_id = $item->get_product_id();
+		$quantity = $item->get_quantity();
+		$course_id = get_post_meta($product_id, 'moodle_course_id', true);
+
+		$wpdb->insert(
+			$wpdb->prefix . 'moowoodle_group_items',
+			array(
+				'group_id'          => $group_id,
+				'course_id'         => $course_id,
+				'product_id'        => $product_id,
+				'user_id'           => $user_id,
+				'total_quantity'    => $quantity,
+				'available_quantity'=> $quantity,
+				'status'            => 'unenroll', // Default status, can be changed as needed
+			),
+			array('%d', '%d', '%d', '%d', '%d', '%d', '%s')
+		);
+	}	
+	
 
 	/**
 	 * Get moodle user id. If the user does not exist in moodle then creats an user in moodle.
@@ -64,14 +112,13 @@ class Enrollment {
 		if ( ! $user_id ) return $user_id;
 		
 		$moodle_user_id = get_user_meta( $user_id, 'moowoodle_moodle_user_id', true );
-		
 		/**
 		 * Filter before moodle user create or update.
 		 * @var int $moodle_user_id
 		 * @var int user_id
 		 */
 		$moodle_user_id = apply_filters( 'moowoodle_get_moodle_user_id_before_enrollment', $moodle_user_id, $user_id );
-		
+
 		// If moodle user id exist then return it.
 		if ( $moodle_user_id ) return $moodle_user_id;
 
@@ -80,8 +127,9 @@ class Enrollment {
 
 		// Get user id from moodle database.
 		$moodle_user_id = $this->search_for_moodle_user( 'email', ( $user ) ? $user->user_email : $email );
-		
+
 		if ( ! $moodle_user_id ) {
+
 			$moodle_user_id = $this->create_moodle_user();
 		} else {
 			// User id is availeble update user id.
@@ -163,7 +211,8 @@ class Enrollment {
 				 * @var int $user_id newly created user id
 				 */
 				do_action( 'moowoodle_after_create_moodle_user', $user_data, $user_id );
-				update_user_meta( $this->order->get_user_id(), 'moowoodle_moodle_new_user_created', 'created' );
+
+                update_user_meta( $this->order->get_user_id(), 'moowoodle_moodle_new_user_created', 'created' );
 
 				return $user_id;
 			} else {
@@ -252,12 +301,12 @@ class Enrollment {
 	 * @param int $suspend default 0
 	 * @return void
 	 */
-	public function enrol_moodle_user( $moodle_user_id, $suspend = 0 ) {
+	public function enrol_moodle_user( $moodle_user_id, $item, $suspend = 0 ) {
 		if ( empty( $moodle_user_id ) ) {
 			return;
 		}
 
-		$enrolments = $this->get_enrollment_data( $moodle_user_id, $suspend );
+		$enrolments = $this->get_enrollment_data( $moodle_user_id, $item, $suspend );
 		
 		if ( empty( $enrolments ) ) {
 			return;
@@ -269,13 +318,31 @@ class Enrollment {
 		foreach ( $enrolments as $key => $value ) {
 			unset( $enrolments[ $key ][ 'linked_course_id' ] );
 			unset( $enrolments[ $key ][ 'course_name' ] );
+			unset( $enrolments[ $key ][ 'item_id' ] );
 		}
-
 		// enroll user to moodle course by core external function.
 		MooWoodle()->external_service->do_request( 'enrol_users', [ 'enrolments' => $enrolments ] );
+
+		// Prepare user data.
+		$user_id  = $this->order->get_user_id();
+		$user 	  = $user_id ? get_userdata( $user_id ) : false;
+		$email 	  = $this->order->get_billing_email();
+		$email	  = $user ? $user->user_email : $email;
+
+		// Insert enrollment to enrollment table
+		foreach ( $enrolment_data as $key => $enrolment ) {
+			self::add_enrollment([
+				'user_id' 	 => $user_id,
+				'user_email' => $email,
+				'course_id'  => $enrolment[ 'linked_course_id' ],
+				'order_id'   => $this->order->get_id(),
+				'item_id'    => $enrolment[ 'item_id' ],
+				'status'     => 'enrolled',
+			]);
+		}
 		
 		$this->order->update_meta_data( 'moodle_user_enrolled', true );
-		$this->order->update_meta_data( 'moodle_user_enrolment_date', time() );
+		// $this->order->update_meta_data( 'moodle_user_enrolment_date', time() );
 		$this->order->save();
 
 		/**
@@ -292,7 +359,7 @@ class Enrollment {
 	 * @param int $suspend (default: int)
 	 * @return array
 	 */
-	private function get_enrollment_data( $moodle_user_id, $suspend = 0 ) {
+	private function get_enrollment_data( $moodle_user_id, $item, $suspend = 0 ) {
 		$enrolments = [];
 
 		/**
@@ -301,22 +368,21 @@ class Enrollment {
 		 */
 		$role_id = apply_filters( 'moowoodle_enrolled_user_role_id', 5 );
 
-		foreach ( $this->order->get_items() as $item ) {
-			// Get moowoodle course id
-			$course_id = get_post_meta( $item->get_product_id(), 'moodle_course_id', true );
+		// Get moowoodle course id
+		$course_id = get_post_meta( $item->get_product_id(), 'moodle_course_id', true );
 			
-			// If product is not associate with moodle course.
-			if ( empty( $course_id ) ) continue;
+		// If product is not associate with moodle course.
+		if ( empty( $course_id ) ) return [];
 
-			$enrolments[] = [
-				'courseid' 		   => intval( $course_id ),
-				'userid'   		   => $moodle_user_id,
-				'roleid'	 	   => $role_id,
-				'suspend'		   => $suspend,
-				'linked_course_id' => get_post_meta( $item->get_product_id(), 'linked_course_id', true ),
-				'course_name'	   => get_the_title( $item->get_product_id() ),
+		$enrolments[] = [
+			'courseid' 		   => intval( $course_id ),
+			'userid'   		   => $moodle_user_id,
+			'roleid'	 	   => $role_id,
+			'suspend'		   => $suspend,
+			'linked_course_id' => get_post_meta( $item->get_product_id(), 'linked_course_id', true ),
+			'course_name'	   => get_the_title( $item->get_product_id() ),
+			'item_id'		   => $item->get_id(),
 			];
-		}
 
 		/**
 		 * Filter after prepare enrollments data.
@@ -400,5 +466,233 @@ class Enrollment {
 
 		//shuffle the password string before returning!
 		return str_shuffle( $password );
+	}
+
+	/**
+	 * Migrate enrollment data from order to our custom table
+	 * @return void
+	 */
+	public static function migrate_enrollments() {
+		// Get all enrollment data
+		$order_ids = wc_get_orders( [
+			'status' 	  => 'completed',
+			'meta_query'  => [
+				[
+					'key'     => 'moodle_user_enrolled',
+					'value'   => 1,
+					'compare' => '=',
+				],
+			],
+			'return' => 'ids',
+		]);
+
+		// Migrate all orders
+        foreach ( $order_ids as $order_id ) {
+			$order = wc_get_order( $order_id );
+			self::migrate_enrollment( $order );
+		}
+	}
+
+	/**
+	 * Migrate all enrollment from a order
+	 * @param mixed $order
+	 * @return void
+	 */
+	public static function migrate_enrollment( $order ) {
+		// Get all unenrolled courses of the order
+		$unenrolled_courses = $order->get_meta( '_course_unenroled', true );
+		$unenrolled_courses = $unenrolled_courses ? explode( ',', $unenrolled_courses ) : [];
+
+		foreach ( $order->get_items() as $enrolment ) {
+
+			$customer = $order->get_user();
+
+			if ( ! $customer ) continue;
+
+			$product = $enrolment->get_product();
+
+			if ( ! $product ) continue;
+
+			// Get linked course id
+			$linked_course_id = $product->get_meta( 'linked_course_id', true );
+			
+			// Get enrollment date
+			$enrollment_date   = $order->get_meta( 'moodle_user_enrolment_date', true );
+			if ( is_numeric( $enrollment_date) ) {
+				$enrollment_date = date( "Y-m-d H:i:s", $enrollment_date );
+			}
+			
+			// Get the enrollment status
+			$enrollment_status = in_array( $linked_course_id, $unenrolled_courses ) ? 'unenrolled' : 'enrolled';
+
+			self::add_enrollment([
+				'user_id' 	 => $customer->ID,
+				'user_email' => $customer->user_email,
+				'course_id'  => $linked_course_id,
+				'order_id'   => $order->get_id(),
+				'item_id'    => $enrolment->get_id(),
+				'status'     => $enrollment_status,
+				'date'	     => $enrollment_date,
+			]);
+		}
+	}
+
+	/**
+	 * Add new enrollment
+	 * @param mixed $args
+	 * @return bool|int|null
+	 */
+	public static function add_enrollment( $args ) {
+		global $wpdb;
+
+		try {
+			// insert data 
+			return $wpdb->insert( "{$wpdb->prefix}moowoodle_enrollment", $args );
+		} catch ( \Exception $error ) {
+			return null;
+		}
+	}
+
+	/**
+	 * Get a particular enrollment
+	 * @param mixed $id
+	 * @return array|object|null
+	 */
+	public static function get_enrollment( $id ) {
+		global $wpdb;
+
+		try {
+			// get data 
+			return $wpdb->get_row( "SELECT * FROM {$wpdb->prefix}moowoodle_enrollment WHERE id = '$id'", ARRAY_A );
+		} catch ( \Exception $error ) {
+			return null;
+		}
+	}
+
+	/**
+	 * Get a particular enrollment
+	 * @param mixed $key
+	 * @param mixed $value
+	 * @return array|object|null
+	 */
+	public static function get_enrollment_by_field( $key, $value ) {
+		global $wpdb;
+
+		try {
+			// get data 
+			return $wpdb->get_row( "SELECT * FROM {$wpdb->prefix}moowoodle_enrollment WHERE $key = '$value'", ARRAY_A );
+		} catch ( \Exception $error ) {
+			return null;
+		}
+	}
+
+	/**
+	 * Get enrollment by filter
+	 * @param mixed $filter
+	 * @return array|object|null
+	 */
+	public static function get_enrollments( $filter = [] ) {
+		global $wpdb;
+
+        // Handle limit and offset seperatly
+        $page       = $filter['page'] ?? 0;
+        $perpage    = $filter['perpage'] ?? 0;
+
+		// Remove page and perpage after retrive the data
+        unset( $filter['page'] );
+        unset( $filter['perpage'] );
+
+        // Preaper predicate
+        $predicate = [];
+        foreach( $filter as $column => $value ) {
+
+            // BETWEEN or IN condition
+            if ( is_array( $value ) ) {
+
+                // Check for BETWEEN 
+                if ( $value['compare'] === "BETWEEN" ) {
+                    $start_value    = $value['value'][0];
+                    $end_value      = $value['value'][1]; 
+                    $predicate[]    = "{$column} BETWEEN '$start_value' AND '$end_value'";
+                }
+
+                // Check for IN or NOT IN
+                if ( $value['compare'] === "IN" || $value['compare'] === "NOT IN" ) {
+                    $compare        = $value['compare'];
+                    $in_touple      = " (" . implode( ', ', array_map( function($value) { return "'$value'"; }, $value['value'] ) ) . ") ";
+                    $predicate[]    = "{$column} {$compare} {$in_touple}";
+                }
+            } else {
+                $predicate[] = "{$column} = '$value'";
+            }
+        }
+
+        // Preaper query
+        $query = "SELECT * FROM {$wpdb->prefix}moowoodle_enrollment";
+
+        if ( !empty( $predicate ) ) {
+            $query .= " WHERE " . implode( " AND ", $predicate );
+        }
+
+        // Pagination support
+        if ( $page && $perpage && $perpage != -1 ) {
+            $limit  = $perpage;
+            $offset = ( $page - 1 ) * $perpage;
+            $query .= " LIMIT {$limit} OFFSET {$offset}";
+        }
+        
+		try {
+			// Database query for enrollment
+			$enrollments = $wpdb->get_results( $query, ARRAY_A );
+			return $enrollments;
+		} catch ( \Exception $error ) {
+			return null;
+		}
+	}
+
+	/**
+	 * Update a particular enrollment
+	 * @param mixed $id
+	 * @param mixed $args
+	 * @return bool|int
+	 */
+	public static function update_enrollment(  $id, $args ) {
+		global $wpdb;
+
+        // Check missing arguments
+        if ( ! $id || ! $args ) {
+            return false;
+        }
+
+        // Update the row
+        $update = $wpdb->update(
+            $wpdb->prefix . "moowoodle_enrollment",
+            $args,
+            [ 'id' => $id ],
+        );
+
+        return $update;
+	}
+
+	/**
+	 * Delete a particular enrollment
+	 * @param mixed $id
+	 * @return bool|int
+	 */
+	public static function delete_enrollment( $id ) {
+		global $wpdb;
+
+        // Check missing arguments
+        if ( ! $id ) {
+            return false;
+        }
+
+        // Delete the row
+        $delete = $wpdb->delete(
+            $wpdb->prefix . "moowoodle_enrollment",
+            [ 'id' => $id ],
+        );
+
+        return $delete;
 	}
 }
