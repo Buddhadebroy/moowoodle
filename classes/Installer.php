@@ -113,6 +113,7 @@ class Installer {
         $display_settings = [
             'start_end_date'                    => ['start_end_date'],
             'my_courses_priority'               => 0,
+            'my_groups_priority'               => 1,
             'moowoodle_create_user_custom_mail' => [],
         ];
         // Default value for log setting
