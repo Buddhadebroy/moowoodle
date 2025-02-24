@@ -21,7 +21,6 @@ class Ajax {
         $group_id        = filter_input(INPUT_POST, 'group_id', FILTER_SANITIZE_STRING) ?: '';
         $group_item_id   = filter_input(INPUT_POST, 'group_item_id', FILTER_SANITIZE_STRING) ?: '';
 
-
         // Validate email
         if (!is_email($user_email)) {
             wp_send_json_error(['message' => __('Invalid email address.', 'moowoodle')]);
@@ -45,38 +44,38 @@ class Ajax {
             $user = new \WP_User($user_id);
             $user->set_role('customer');
         }
-
         $moodle_user_id = $this->get_moodle_user_id( $user_id );
 
         if ( ! $moodle_user_id ) {
             \MooWoodle\Util::log( 'Unable to enroll user, unable to create user in moodle' );
         }
 
+		
         $course_id = get_post_meta( $product_id, 'moodle_course_id', true );
 
-        $enroll = $this->enrol_user( $moodle_user_id, $course_id, $group_id, $group_item_id );
+		
+        $enroll = $this->enrol_user( $user_id, $moodle_user_id, $course_id, $group_id, $group_item_id );
 
+		
         // Send success response
-        wp_send_json_success([
-            'message' => $message,
-            'user_id' => $user_id,
-        ]);
+        wp_send_json_success();
     }
 
     public function get_moodle_user_id($user_id) {
 
 		// if user is a guest user.
 		if ( ! $user_id ) return $user_id;
-		
+
+
 		$moodle_user_id = get_user_meta( $user_id, 'moowoodle_moodle_user_id', true );
-		
+
+
 		/**
 		 * Filter before moodle user create or update.
 		 * @var int $moodle_user_id
 		 * @var int user_id
 		 */
 		$moodle_user_id = apply_filters( 'moowoodle_get_moodle_user_id_before_enrollment', $moodle_user_id, $user_id );
-		
 		// If moodle user id exist then return it.
 		if ( $moodle_user_id ) return $moodle_user_id;
 
@@ -84,54 +83,94 @@ class Ajax {
 
 		// Get user id from moodle database.
 		$moodle_user_id = $this->search_for_moodle_user( 'email', $user->user_email );
-		
 		if ( ! $moodle_user_id ) {
 			$moodle_user_id = $this->create_user( $user );
 		} 
-        else {
-			// User id is availeble update user id.
+        // else {
+		// 	// User id is availeble update user id.
 
-			$should_user_update = MooWoodle()->setting->get_setting( 'update_moodle_user', [] );
-			$should_user_update = is_array( $should_user_update ) ? $should_user_update : [];
-			$should_user_update = in_array(
-				'update_moodle_user',
-				$should_user_update
-			);
+		// 	$should_user_update = MooWoodle()->setting->get_setting( 'update_moodle_user', [] );
+		// 	$should_user_update = is_array( $should_user_update ) ? $should_user_update : [];
+		// 	$should_user_update = in_array(
+		// 		'update_moodle_user',
+		// 		$should_user_update
+		// 	);
+		// 	file_put_contents( WP_CONTENT_DIR . '/mo_file_log.txt', 'response:get moodle user id else call'. var_export($moodle_user_id, true) . "\n", FILE_APPEND );
 
-			if ( $should_user_update ) {
-				$this->update_moodle_user( $moodle_user_id );
-			}
-		}
+		// 	if ( $should_user_update ) {
+		// 		$this->update_moodle_user( $moodle_user_id );
+		// 	}
+		// }
 
 		update_user_meta( $user_id, 'moowoodle_moodle_user_id', $moodle_user_id );
-
 		return $moodle_user_id;
+	}
+	private function search_for_moodle_user( $key, $value ) {
+		// find user on moodle with moodle externel function.
+		$response = MooWoodle()->external_service->do_request(
+			'get_moodle_users',
+			[ 
+				'criteria' => [
+					[
+						'key' 	=> $key,
+						'value' => $value
+					]
+				]
+			]
+		);
+
+		if ( ! empty( $response[ 'data' ][ 'users' ]) ) {
+			$user = reset( $response[ 'data' ][ 'users' ] );
+			return $user[ 'id' ];
+		}
+
+		return 0;
 	}
 
     public function create_user( $user ) {
+		try {
 
-        $password = get_user_meta( $user_id, 'moowoodle_moodle_user_pwd', true );
+			$password = get_user_meta( $user->get('ID'), 'moowoodle_moodle_user_pwd', true );
 
-        // If password not exist create a password.
-		if ( ! $password ) {
-			$password = $this->generate_password();
-			add_user_meta( $user_id, 'moowoodle_moodle_user_pwd', $password );
+			// If password not exist create a password.
+			if ( ! $password ) {
+				$password = $this->generate_password();
+				add_user_meta( $user->get('ID'), 'moowoodle_moodle_user_pwd', $password );
+			}
+	
+			$response = MooWoodle()->external_service->do_request( 'create_users', [ 'users' =>  [ [
+				'email' 	=> $user->user_email,
+				'username'  => $user->user_login,
+				'password'  => $password,
+				'auth' 		=> 'manual',
+				'firstname' => $user->display_name,
+				'lastname'  => 'testuser',
+			] ] ] );
+			// Not a valid response.
+			if ( ! $response[ 'data' ] ) return 0;
+
+			$moodle_users = $response[ 'data' ];
+			$moodle_users = reset( $moodle_users );
+
+			if ( is_array( $moodle_users ) && isset( $moodle_users[ 'id' ] ) ) {
+				$user_id = $moodle_users[ 'id' ];
+
+				/**
+				 * Action hook after moodle user creation.
+				 * @var array $user_data data for creating user in moodle
+				 * @var int $user_id newly created user id
+				 */
+				do_action( 'moowoodle_after_create_moodle_user', $user_data, $user_id );
+                update_user_meta( $user->get('ID'), 'moowoodle_moodle_new_user_created', 'created' );
+				return $user_id;
+			} else {
+				throw new \Exception( "Unable to create user." );
+			}
+		} catch ( \Exception $e ) {
+			Util::log( $e->getMessage() );
 		}
 
-		$response = MooWoodle()->external_service->do_request( 'create_users', [ 'users' =>  [ [
-			'email' 	=> $user->user_email,
-			'username'  => $user->user_login,
-			'password'  => $password,
-			'auth' 		=> 'manual',
-			'firstname' => $user->display_name,
-			'lastname'  => 'testuser',
-		] ] ] );
-
-		if ( $response && ! isset( $response[ 'error' ] ) ) {
-			$response[ 'success' ] = true;
-		}
-
-		return $response;
+		return 0;
 	}
 
     /**
@@ -166,15 +205,26 @@ class Ajax {
 		return str_shuffle( $password );
 	}
 
-    public static function enrol_user( $user_id, $course_id, $group_id, $group_item_id ) {
+    public static function enrol_user( $user_id, $moodle_user_id, $course_id, $group_id, $group_item_id ) {
+
         global $wpdb;
+        // Fetch product_id from the database using group_item_id
+        $product_id = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT product_id FROM {$wpdb->prefix}moowoodle_group_items WHERE id = %d",
+                $group_item_id
+            )
+        );
 
-		$response = MooWoodle()->external_service->do_request( 'enrol_users', [ 'enrolments' =>  [ [
-			'courseid' => "$course_id",
-			'userid'   => "$user_id",
-			'roleid'   => '5',
-		] ] ] );
+		$product = wc_get_product( $product_id );
 
+		$enrolments[] = [
+			'courseid' 		   => intval( $course_id ),
+			'userid'   		   => $moodle_user_id,
+			'roleid'	 	   => 5,
+			];
+
+		$response = MooWoodle()->external_service->do_request( 'enrol_users', [ 'enrolments' => $enrolments ] );
         $user = get_userdata($user_id);
 
         // Fetch order_id from the database using group_id
@@ -198,6 +248,10 @@ class Ajax {
 		if ( $response && ! isset( $response[ 'error' ] ) ) {
 			$response[ 'success' ] = true;
 		}
+		if ( $product ) {
+			$enrolments[0]['course_name'] = $product->get_name();
+		}
+		do_action( 'moowoodle_after_enrol_moodle_user', $enrolments, $user_id);
 
 		return $response;
 	}

@@ -38,7 +38,7 @@ if ( $group_item_id_result ) {
         FROM {$wpdb->prefix}moowoodle_enrollment e
         WHERE e.group_item_id = %d
         ",
-        $group_item_id_result
+        $group_item_id
     );
 
     $results = $wpdb->get_results($query);

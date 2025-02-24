@@ -33,7 +33,6 @@ class Enrollment {
 				if ( ! $moodle_user_id ) {
 					\MooWoodle\Util::log( 'Unable to enroll user, unable to create user in moodle' );
 				}
-				file_put_contents( WP_CONTENT_DIR . '/mo_file_log.txt', 'response_en:'. var_export("true", true) . "\n", FILE_APPEND );
 
 				$this->enrol_moodle_user( $moodle_user_id, $item );
 			} else if ( $item->get_quantity() > 1 ) {
@@ -350,6 +349,7 @@ class Enrollment {
 		 * @var array $enrollment_data
 		 * @var int $userid
 		 */
+		file_put_contents( WP_CONTENT_DIR . '/mo_file_log.txt', 'response:'. var_export($enrolment_data, true) . "\n", FILE_APPEND );
 		do_action( 'moowoodle_after_enrol_moodle_user', $enrolment_data, $this->order->get_user_id() );
 	}
 

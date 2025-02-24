@@ -77,21 +77,12 @@ jQuery(document).ready(function($) {
                 group_item_id: groupItemId,
             },
             success: function(response) {
-                console.log(response);
-                var messageDiv = $('#addUserMessage');
-
                 if (response.success) {
-                    messageDiv.css('color', 'green').html(response.data.message);
+                    alert('User added successfully!');
+                    location.reload();
                 } else {
-                    messageDiv.css('color', 'red').html(response.data.message);
+                    alert('Error: ' + response.data.message);
                 }
-
-                // Hide modal after a short delay
-                setTimeout(function() {
-                    $('#addUserModal').hide();
-                    $('#add-user-form')[0].reset();
-                    messageDiv.html('');
-                }, 2000);
             }
         });
     });
