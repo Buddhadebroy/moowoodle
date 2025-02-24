@@ -57,13 +57,19 @@ jQuery(document).ready(function($) {
     // Handle form submission via AJAX
     $('#add-user-form').on('submit', function(event) {
         event.preventDefault();
-
+    
         var user_name = $('#user_name').val();
         var user_email = $('#user_email').val();
         var productId = $('#product_id').val();
         var groupId = $('#group_id').val();
         var groupItemId = $('#group_item_id').val();
-
+    
+        // Clear previous messages
+        $('#response-message').remove();
+    
+        // Add a loading indicator
+        $('#add-user-form').append('<div id="response-message" class="loading-message">Processing...</div>');
+    
         // AJAX request
         $.ajax({
             type: 'POST',
@@ -77,13 +83,20 @@ jQuery(document).ready(function($) {
                 group_item_id: groupItemId,
             },
             success: function(response) {
+                console.log(response);
                 if (response.success) {
-                    alert('User added successfully!');
-                    location.reload();
+                    $('#response-message').html('<div class="success-message">User added successfully! Reloading...</div>');
+                    setTimeout(function() {
+                        location.reload(); // Reload after 1 second
+                    }, 1000);
                 } else {
-                    alert('Error: ' + response.data.message);
+                    $('#response-message').html('<div class="error-message">' + (response.message ? response.message : 'Something went wrong!') + '</div>');
                 }
+            },
+            error: function(xhr, status, error) {
+                $('#response-message').html('<div class="error-message">Request failed: ' + error + '</div>');
             }
         });
     });
+    
 });
