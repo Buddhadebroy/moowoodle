@@ -8,9 +8,6 @@ $args = wp_parse_args($args ?? [], [
     'group_item_id'  => 0,
 ]);
 extract($args);
-echo 'Product ID: ' . esc_html($product_id) . '<br>';
-echo 'Group ID: ' . esc_html($group_id) . '<br>';
-echo 'Item ID: ' . esc_html($group_item_id) . '<br>';
 
 global $wpdb;
 

@@ -15,65 +15,65 @@ class Ajax {
      */
 	public function moowoodle_add_user() {
 		// Sanitize input data
-		$user_name       = filter_input(INPUT_POST, 'user_name', FILTER_SANITIZE_STRING) ?: '';
-		$user_email      = filter_input(INPUT_POST, 'user_email', FILTER_SANITIZE_EMAIL) ?: '';
-		$product_id      = filter_input(INPUT_POST, 'product_id', FILTER_SANITIZE_STRING) ?: '';
-		$group_id        = filter_input(INPUT_POST, 'group_id', FILTER_SANITIZE_STRING) ?: '';
-		$group_item_id   = filter_input(INPUT_POST, 'group_item_id', FILTER_SANITIZE_STRING) ?: '';
+		$user_name     = filter_input(INPUT_POST, 'user_name', FILTER_SANITIZE_STRING) ?: '';
+		$user_email    = filter_input(INPUT_POST, 'user_email', FILTER_SANITIZE_EMAIL) ?: '';
+		$product_id    = filter_input(INPUT_POST, 'product_id', FILTER_SANITIZE_STRING) ?: '';
+		$group_id      = filter_input(INPUT_POST, 'group_id', FILTER_SANITIZE_STRING) ?: '';
+		$group_item_id = filter_input(INPUT_POST, 'group_item_id', FILTER_SANITIZE_STRING) ?: '';
 	
 		// Validate email
-		if (!is_email($user_email)) {
+		if ( !is_email( $user_email ) ) {
 			wp_send_json([
 				'success' => false,
-				'data'    => null,
 				'message' => __('Invalid email address.', 'moowoodle')
 			]);
 		}
-	
-		// Check if user exists by email
-		$user = get_user_by('email', $user_email);
-		if ($user) {
-			$user_id = $user->ID;
-		} else {
-			// Create new user
-			$random_password = wp_generate_password(12, false);
-			$user_id = wp_create_user($user_name, $random_password, $user_email);
-	
+		// Check if user exists; otherwise, create a new user
+		$user = get_user_by( 'email', $user_email ) ;
+		if (!$user) {
+			$user_id = wp_create_user( $user_name, wp_generate_password(12, false), $user_email );
 			// Handle user creation error
-			if (is_wp_error($user_id)) {
+			if ( is_wp_error( $user_id ) ) {
 				wp_send_json([
 					'success' => false,
-					'data'    => null,
 					'message' => __('Failed to create user: ', 'moowoodle') . $user_id->get_error_message()
 				]);
 			}
-	
-			// Set user role
-			$user = new \WP_User($user_id);
-			$user->set_role('customer');
+			(new \WP_User($user_id))->set_role('customer');
+		} else {
+			$user_id = $user->ID;
 		}
-	
-		$moodle_user_id = $this->get_moodle_user_id($user_id);
-		if (!$moodle_user_id) {
-			\MooWoodle\Util::log('Unable to enroll user, unable to create user in Moodle');
+		// Get Moodle user ID
+		$moodle_user_id = $this->get_moodle_user_id( $user_id );
+
+		if ( ! $moodle_user_id ) {
+			\MooWoodle\Util::log('Unable to enroll user, Moodle user creation failed.');
 			wp_send_json([
 				'success' => false,
-				'data'    => null,
 				'message' => __('Failed to retrieve Moodle user ID.', 'moowoodle')
 			]);
 		}
-	
-		$course_id = get_post_meta($product_id, 'moodle_course_id', true);
-		
-		// Call enrollment function
-		$enroll_response = $this->enrol_user($user_id, $moodle_user_id, $course_id, $group_id, $group_item_id);
-	
-	
-		// Check if enrollment was successful
-		if (!$enroll_response['success']) {
+		// Get course ID from product meta
+		$course_id = get_post_meta( $product_id, 'moodle_course_id', true );
+		if (!$course_id) {
 			wp_send_json([
 				'success' => false,
-				'data'    => null,
+				'message' => __('Invalid course ID.', 'moowoodle')
+			]);
+		}
+		// Enroll user
+		$enroll_response = $this->enrol_user([
+			'user_id'        => $user_id,
+			'moodle_user_id' => $moodle_user_id,
+			'course_id'      => $course_id,
+			'group_id'       => $group_id,
+			'group_item_id'  => $group_item_id,
+		]);
+	
+		// Check enrollment success
+		if ( ! $enroll_response['success'] ) {
+			wp_send_json([
+				'success' => false,
 				'message' => __('Enrollment failed: ', 'moowoodle') . ($enroll_response['message'] ?? __('Unknown error', 'moowoodle'))
 			]);
 		}
@@ -81,21 +81,15 @@ class Ajax {
 		// Send success response
 		wp_send_json([
 			'success' => true,
-			'data'    => $enroll_response['data'],
 			'message' => __('User successfully enrolled in the course.', 'moowoodle')
 		]);
 	}
-	
 
     public function get_moodle_user_id($user_id) {
-
 		// if user is a guest user.
 		if ( ! $user_id ) return $user_id;
 
-
 		$moodle_user_id = get_user_meta( $user_id, 'moowoodle_moodle_user_id', true );
-
-
 		/**
 		 * Filter before moodle user create or update.
 		 * @var int $moodle_user_id
@@ -237,115 +231,98 @@ class Ajax {
 		return str_shuffle( $password );
 	}
 
-	public static function enrol_user($user_id, $moodle_user_id, $course_id, $group_id, $group_item_id) {
-		$previous_enrolled_courses = get_user_meta($user_id, 'moowoodle_moodle_course_enroll', true);
-		if (!is_array($previous_enrolled_courses)) {
-			$previous_enrolled_courses = [];
-		}
+	public static function enrol_user( $enroll_data ) {
+		global $wpdb;
 	
-		// Check if the user is already enrolled in this course
-		if (in_array($course_id, $previous_enrolled_courses)) {
+		// Fetch previously enrolled courses
+		$previous_enrolled_courses = get_user_meta( $enroll_data['user_id'], 'moowoodle_moodle_course_enroll', true );
+		$previous_enrolled_courses = is_array( $previous_enrolled_courses ) ? $previous_enrolled_courses : [];
+	
+		// Exit if user is already enrolled
+		if ( in_array( $enroll_data[ 'course_id' ], $previous_enrolled_courses ) ) {
 			return [
 				'success' => false,
-				'data'    => null,
 				'message' => __('User is already enrolled in this course.', 'moowoodle')
 			];
 		}
 	
-		global $wpdb;
-	
-		// Fetch available quantity from the wp_moowoodle_group_items table
+		// Fetch group item data in a single query
 		$group_item_data = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT product_id, available_quantity FROM {$wpdb->prefix}moowoodle_group_items WHERE id = %d",
-				$group_item_id
+				$enroll_data['group_item_id']
 			),
 			ARRAY_A
 		);
 	
-		if (!$group_item_data) {
+		// Validate group item existence and availability
+		if ( ! $group_item_data || (int)$group_item_data[ 'available_quantity' ] <= 0 ) {
 			return [
 				'success' => false,
-				'data'    => null,
-				'message' => __('Group item not found.', 'moowoodle')
-			];
-		}
-	
-		$product_id = $group_item_data['product_id'];
-		$available_quantity = (int) $group_item_data['available_quantity'];
-	
-		// Check if there is available quantity
-		if ($available_quantity <= 0) {
-			return [
-				'success' => false,
-				'data'    => null,
-				'message' => __('No available seats for this course.', 'moowoodle')
+				'message' => $group_item_data ? __('No available seats for this course.', 'moowoodle') : __('Group item not found.', 'moowoodle')
 			];
 		}
 	
 		// Prepare enrollment request
-		$enrolments[] = [
-			'courseid'  => intval($course_id),
-			'userid'    => $moodle_user_id,
-			'roleid'    => 5,
-		];
+		$enrolments = [[
+			'courseid' => (int) $enroll_data['course_id'],
+			'userid'   => $enroll_data['moodle_user_id'],
+			'roleid'   => 5,
+		]];
 	
-		// Call Moodle API
+		// Call Moodle API for user enrollment
 		$response = MooWoodle()->external_service->do_request('enrol_users', ['enrolments' => $enrolments]);
 	
-		// Fetch order ID
-		$order_id = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT order_id FROM {$wpdb->prefix}moowoodle_group WHERE id = %d",
-				$group_id
-			)
-		);
-	
-		$user = get_userdata($user_id);
-	
-		self::add_enrollment([
-			'user_id'       => $user_id,
-			'user_email'    => $user->user_email,
-			'course_id'     => $course_id,
-			'order_id'      => $order_id,
-			'item_id'       => 0,
-			'status'        => 'enrolled',
-			'group_item_id' => $group_item_id,
-		]);
-	
+		// Handle Moodle API failure
 		if (!$response || isset($response['error'])) {
 			return [
 				'success' => false,
-				'data'    => null,
 				'message' => __('Moodle enrollment failed.', 'moowoodle')
 			];
 		}
 	
-		// Reduce available quantity in the database
+		// Fetch order ID in a single query
+		$order_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT order_id FROM {$wpdb->prefix}moowoodle_group WHERE id = %d",
+				$enroll_data['group_id']
+			)
+		);
+	
+		// Add user enrollment record
+		$user = get_userdata( $enroll_data[ 'user_id' ] );
+		self::add_enrollment([
+			'user_id'       => $enroll_data['user_id'],
+			'user_email'    => $user->user_email,
+			'course_id'     => $enroll_data['course_id'],
+			'order_id'      => $order_id,
+			'item_id'       => 0,
+			'status'        => 'enrolled',
+			'group_item_id' => $enroll_data['group_item_id'],
+		]);
+	
+		// Reduce available quantity
 		$wpdb->update(
 			"{$wpdb->prefix}moowoodle_group_items",
-			['available_quantity' => $available_quantity - 1],
-			['id' => $group_item_id],
+			[ 'available_quantity' => (int) $group_item_data[ 'available_quantity' ] - 1],
+			['id' => $enroll_data[ 'group_item_id' ]], 
 			['%d'],
 			['%d']
 		);
 	
 		// Update user meta with the newly enrolled course
-		$previous_enrolled_courses[] = $course_id;
-		update_user_meta($user_id, 'moowoodle_moodle_course_enroll', $previous_enrolled_courses);
+		$previous_enrolled_courses[] = $enroll_data[ 'course_id' ];
+		update_user_meta( $enroll_data[ 'user_id' ], 'moowoodle_moodle_course_enroll', $previous_enrolled_courses );
 	
-		do_action('moowoodle_after_enrol_moodle_user', $enrolments, $user_id);
+		// Fire action hook for post-enrollment events
+		do_action( 'moowoodle_after_enrol_moodle_user', $enrolments, $enroll_data[ 'user_id' ] );
 	
 		return [
 			'success' => true,
-			'data'    => null,
 			'message' => __('User successfully enrolled.', 'moowoodle')
 		];
 	}
 	
-	
-	
-
     /**
 	 * Add new enrollment
 	 * @param mixed $args

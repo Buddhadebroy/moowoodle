@@ -349,6 +349,7 @@ class Enrollment {
 		 * @var array $enrollment_data
 		 * @var int $userid
 		 */
+		file_put_contents( WP_CONTENT_DIR . '/mo_file_log.txt', 'response:'. var_export($enrolment_data, true) . "\n", FILE_APPEND );
 		do_action( 'moowoodle_after_enrol_moodle_user', $enrolment_data, $this->order->get_user_id() );
 	}
 
