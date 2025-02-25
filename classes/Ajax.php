@@ -68,7 +68,6 @@ class Ajax {
 		// Call enrollment function
 		$enroll_response = $this->enrol_user($user_id, $moodle_user_id, $course_id, $group_id, $group_item_id);
 	
-		file_put_contents(WP_CONTENT_DIR . '/mo_file_log.txt', 'Response: ' . var_export($enroll_response, true) . "\n", FILE_APPEND);
 	
 		// Check if enrollment was successful
 		if (!$enroll_response['success']) {
@@ -172,6 +171,12 @@ class Ajax {
 				'auth' 		=> 'manual',
 				'firstname' => $user->display_name,
 				'lastname'  => 'testuser',
+				'preferences' => [
+					[
+						'type'  => "auth_forcepasswordchange",
+						'value' => 1
+					]
+				]
 			] ] ] );
 			// Not a valid response.
 			if ( ! $response[ 'data' ] ) return 0;
@@ -187,7 +192,7 @@ class Ajax {
 				 * @var array $user_data data for creating user in moodle
 				 * @var int $user_id newly created user id
 				 */
-				do_action( 'moowoodle_after_create_moodle_user', $user_data, $user_id );
+				//do_action( 'moowoodle_after_create_moodle_user', $user_data, $user_id );
                 update_user_meta( $user->get('ID'), 'moowoodle_moodle_new_user_created', 'created' );
 				return $user_id;
 			} else {
