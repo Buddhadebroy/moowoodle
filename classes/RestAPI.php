@@ -17,6 +17,7 @@ class RestAPI {
         if ( current_user_can( 'manage_options' ) ) {
             add_action( 'rest_api_init', [ &$this, 'register' ] );
         }
+        add_action( 'rest_api_init', [ &$this, 'register' ] );
     }
 
     /**
@@ -54,6 +55,12 @@ class RestAPI {
             'permission_callback' =>[ $this, 'moowoodle_permission' ],
         ]);
 
+        register_rest_route( MooWoodle()->rest_namespace, '/get-user-courses', [
+            'methods'             => \WP_REST_Server::ALLMETHODS,
+            'callback'            =>[ $this, 'get_user_courses' ],
+            //'permission_callback' =>[ $this, 'moowoodle_permission' ],
+        ]);
+
         register_rest_route( MooWoodle()->rest_namespace, '/all-courses', [
             'methods'             => \WP_REST_Server::ALLMETHODS,
             'callback'            =>[ $this, 'get_all_courses' ],
@@ -70,6 +77,14 @@ class RestAPI {
             'methods'             => \WP_REST_Server::ALLMETHODS,
             'callback'            =>[ $this, 'download_log' ],
             'permission_callback' =>[ $this, 'moowoodle_permission' ],
+        ]);
+    }
+
+    public function reg(){
+        register_rest_route( MooWoodle()->rest_namespace, '/get-user-courses', [
+            'methods'             => \WP_REST_Server::ALLMETHODS,
+            'callback'            =>[ $this, 'get_user_courses' ],
+            //'permission_callback' =>[ $this, 'moowoodle_permission' ],
         ]);
     }
 
@@ -393,7 +408,64 @@ class RestAPI {
 		}
         return rest_ensure_response( $formatted_courses );
     }
-
+    /**
+     * Fetch all course
+     * @param mixed $request
+     * @return \WP_Error|\WP_REST_Response
+     */
+    public function get_user_courses( $request ) {
+        file_put_contents( WP_CONTENT_DIR . '/mo_file_log.txt', 'response:restin'. var_export("yes", true) . "\n", FILE_APPEND );
+        $customer = wp_get_current_user();
+    
+        if ( !$customer->ID ) {
+            return new \WP_Error( 'no_user', __( 'User not found', 'moowoodle' ), [ 'status' => 403 ] );
+        }
+    
+        // Get pagination parameters
+        $per_page = $request->get_param( 'row' ) ?: 10; // Default to 10 courses per page
+        $page     = $request->get_param( 'page' ) ?: 1;
+    
+        // Query customer orders
+        $args = [
+            'customer_id'    => $customer->ID,
+            'status'         => 'wc-completed',
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+            'posts_per_page' => $per_page,
+            'paged'          => $page,
+        ];
+    
+        $customer_orders = wc_get_orders( $args );
+        $total_orders    = count( wc_get_orders( [ 'customer_id' => $customer->ID, 'status' => 'wc-completed' ] ) );
+    
+        // Format orders data
+        $formatted_orders = [];
+        foreach ( $customer_orders as $order ) {
+            foreach ( $order->get_items() as $item ) {
+                $product_id       = $item->get_product_id();
+                $moodle_course_id = get_post_meta( $product_id, 'moodle_course_id', true );
+                $moodle_url       = trailingslashit( MooWoodle()->setting->get_setting( 'moodle_url' ) ) . 'course/view.php?id=' . $moodle_course_id;
+    
+                $formatted_orders[] = [
+                    'order_id'       => $order->get_id(),
+                    'course_name'    => $item->get_name(),
+                    'user_login'     => $customer->user_login,
+                    'password'       => get_user_meta( $customer->ID, 'moowoodle_moodle_user_pwd', true ),
+                    'enrolment_date' => date( 'M j, Y - H:i', strtotime( $order->get_date_created() ) ),
+                    'moodle_url'     => $moodle_url,
+                ];
+            }
+        }
+    
+        return rest_ensure_response( [
+            'total_courses' => $total_orders,
+            'page'          => $page,
+            'per_page'      => $per_page,
+            'total_pages'   => ceil( $total_orders / $per_page ),
+            'courses'       => $formatted_orders,
+        ] );
+    }
+    
     /**
      * get all courses
      * @param mixed $request

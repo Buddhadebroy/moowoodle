@@ -105,43 +105,68 @@ class EndPoint {
 	 * @return void
 	 */
 	public function load_my_courses_account_endpoint() {
-		$customer = wp_get_current_user();
+		// $customer = wp_get_current_user();
 
-		// Get all orders of customer
-		$customer_orders = wc_get_orders([
-			'numberposts' => -1,
-			'orderby' 	  => 'date',
-			'order'       => 'DESC',
-			'type'        => 'shop_order',
-			'status'      => 'wc-completed',
-			'customer_id' => $customer->ID,
-		]);
+		// // Get all orders of customer
+		// $customer_orders = wc_get_orders([
+		// 	'numberposts' => -1,
+		// 	'orderby' 	  => 'date',
+		// 	'order'       => 'DESC',
+		// 	'type'        => 'shop_order',
+		// 	'status'      => 'wc-completed',
+		// 	'customer_id' => $customer->ID,
+		// ]);
 
-		// Define the columns for table
-		$table_heading = [
-			__( "Course Name", 'moowoodle' ),
-			__( "Moodle User Name", 'moowoodle' ),
-			__( "Enrolment Date", 'moowoodle' ),
-			__( "Course Link", 'moowoodle' ),
-		];
+		// // Define the columns for table
+		// $table_heading = [
+		// 	__( "Course Name", 'moowoodle' ),
+		// 	__( "Moodle User Name", 'moowoodle' ),
+		// 	__( "Enrolment Date", 'moowoodle' ),
+		// 	__( "Course Link", 'moowoodle' ),
+		// ];
 
-		$password = get_user_meta( $customer->ID, 'moowoodle_moodle_user_pwd', true );
+		// $password = get_user_meta( $customer->ID, 'moowoodle_moodle_user_pwd', true );
 
-		// Add extra column for password.
-		if ( $password ) {
-			array_splice( $table_heading, 2, 0, __( "Password (First Time use Only)", 'moowoodle' ) );
-		}
+		// // Add extra column for password.
+		// if ( $password ) {
+		// 	array_splice( $table_heading, 2, 0, __( "Password (First Time use Only)", 'moowoodle' ) );
+		// }
 		
-		Util::get_template( 'endpoints/my-course.php', [
-			'table_heading'   => $table_heading,
-			'customer_orders' => $customer_orders,
-			'customer' 		  => $customer,
-			'password' 		  => $password,
-		]);
+		// Util::get_template( 'endpoints/my-course.php', [
+		// 	'table_heading'   => $table_heading,
+		// 	'customer_orders' => $customer_orders,
+		// 	'customer' 		  => $customer,
+		// 	'password' 		  => $password,
+		// ]);
 		
-		// load css for admin panel.
-		add_action( 'wp_enqueue_scripts', [ $this, 'frontend_styles' ] );
+		// // load css for admin panel.
+		// add_action( 'wp_enqueue_scripts', [ $this, 'frontend_styles' ] );
+
+
+
+		wp_enqueue_script(
+			'moowoodle-myaccount-mycourse-script',
+			MOOWOODLE_PLUGIN_URL . 'build/blocks/MyCourses/index.js',
+			['wp-element', 'wp-i18n', 'react-jsx-runtime'],
+			time(),
+			true
+		);
+
+		wp_localize_script(
+			'moowoodle-myaccount-mycourse-script',
+			'appLocalizer',
+			[
+				'apiUrl'          => untrailingslashit( get_rest_url() ),
+				'restUrl'         => 'moowoodle/v1',
+				'nonce'           => wp_create_nonce('wp_rest'),
+				'moodle_site_url' => MooWoodle()->setting->get_setting( 'moodle_url' ),
+			]
+		);
+		
+		echo '<div id="moowoodle-my-course"></div>';
+		
 	}
+
 	/**
 	 * Load the "My Groups" endpoint template in WooCommerce My Account.
 	 * @return void

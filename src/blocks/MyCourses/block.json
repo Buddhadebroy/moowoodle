@@ -1,0 +1,6 @@
+{
+    "apiVersion": 2,
+    "name": "moowoodle/my-course",
+    "title": "My Course",
+    "editorScript": "file:./index.js"
+}
