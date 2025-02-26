@@ -14,22 +14,20 @@ const MyCourse = () => {
 
   const fetchCourses = async (page) => {
     try {
-        console.log("Fetching courses...");
 
-        const response = await axios.post(getApiLink("get-user-courses"), {
-            page: page,
-            row: perPage,
-        }, {
-            headers: { "X-WP-Nonce": appLocalizer.nonce },
-        });
+      const response = await axios.post(getApiLink("get-user-courses"), {
+        page: page,
+        row: perPage,
+      }, {
+        headers: { "X-WP-Nonce": appLocalizer.nonce },
+      });
 
-        setCourses(response.data.courses);
-        setTotalPages(response.data.total_pages);
+      setCourses(response.data.courses);
+      setTotalPages(response.data.total_pages);
     } catch (error) {
-        console.error("Error fetching courses:", error);
+      console.error("Error fetching courses:", error);
     }
-};
-
+  };
 
   return (
     <div className="auto">
@@ -38,7 +36,7 @@ const MyCourse = () => {
       <table className="moowoodle-table shop_table shop_table_responsive my_account_orders">
         <thead>
           <tr>
-            <th>Course Name</th>
+            <th>Course ID</th>
             <th>Username</th>
             <th>Password</th>
             <th>Enrolment Date</th>
@@ -47,18 +45,18 @@ const MyCourse = () => {
         </thead>
         <tbody>
           {courses.length > 0 ? (
-            courses.map((order) => (
-              <tr key={order.id}>
-                <td>{order.productName}</td>
-                <td>{order.userLogin}</td>
-                <td>{order.password}</td>
-                <td>{order.enrolmentDate}</td>
+            courses.map((course, index) => (
+              <tr key={index}>
+                <td>{course.course_id}</td> 
+                <td>{course.user_login}</td> 
+                <td>{course.password}</td>
+                <td>{course.enrolment_date}</td> 
                 <td>
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
                     className="woocommerce-button wp-element-button moowoodle"
-                    href={order.moodleCourseUrl}
+                    href={course.moodle_url}
                   >
                     View
                   </a>

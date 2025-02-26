@@ -1,0 +1,6 @@
+{
+  "apiVersion": 2,
+  "name": "moowoodle/my-group",
+  "title": "My Group",
+  "editorScript": "file:./index.js"
+}

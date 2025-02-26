@@ -5058,10 +5058,10 @@ function persistAppliedTransitions(_window, transitions) {
 
 /***/ }),
 
-/***/ "./src/blocks/MyCourses/MyCourse.jsx":
-/*!*******************************************!*\
-  !*** ./src/blocks/MyCourses/MyCourse.jsx ***!
-  \*******************************************/
+/***/ "./src/blocks/MyGroups/MyGroups.jsx":
+/*!******************************************!*\
+  !*** ./src/blocks/MyGroups/MyGroups.jsx ***!
+  \******************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
@@ -5070,173 +5070,124 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "react");
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var axios__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! axios */ "./node_modules/axios/lib/axios.js");
-/* harmony import */ var _services_apiService__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../services/apiService */ "./src/services/apiService.js");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react/jsx-runtime */ "react/jsx-runtime");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var axios__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! axios */ "./node_modules/axios/lib/axios.js");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react/jsx-runtime */ "react/jsx-runtime");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__);
 
 
 
-
-const MyCourse = () => {
-  const [courses, setCourses] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
-  const [currentPage, setCurrentPage] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(1);
-  const [totalPages, setTotalPages] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(1);
-  const perPage = 5;
+const MyGroups = () => {
+  const [groups, setGroups] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+  const [loading, setLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(true);
+  const [error, setError] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)("");
+  const [newGroupName, setNewGroupName] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)("");
+  const [selectedProducts, setSelectedProducts] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+  const [isModalOpen, setIsModalOpen] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
-    fetchCourses(currentPage);
-  }, [currentPage]);
-  const fetchCourses = async page => {
+    fetchGroups();
+  }, []);
+  const fetchGroups = async () => {
     try {
-      const response = await axios__WEBPACK_IMPORTED_MODULE_3__["default"].post((0,_services_apiService__WEBPACK_IMPORTED_MODULE_1__.getApiLink)("get-user-courses"), {
-        page: page,
-        row: perPage
-      }, {
-        headers: {
-          "X-WP-Nonce": appLocalizer.nonce
-        }
-      });
-      setCourses(response.data.courses);
-      setTotalPages(response.data.total_pages);
-    } catch (error) {
-      console.error("Error fetching courses:", error);
+      const response = await axios__WEBPACK_IMPORTED_MODULE_2__["default"].get("/wp-json/moowoodle/v1/get_user_groups");
+      setGroups(response.data.groups || []);
+      setLoading(false);
+    } catch (err) {
+      setError("Failed to fetch groups. Please try again later.");
+      setLoading(false);
     }
   };
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
-    className: "auto",
-    children: [courses.length > 0 && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("p", {
-      children: ["Total Courses: ", courses.length]
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("table", {
-      className: "moowoodle-table shop_table shop_table_responsive my_account_orders",
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("thead", {
-        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("tr", {
-          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
-            children: "Course ID"
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
-            children: "Username"
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
-            children: "Password"
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
-            children: "Enrolment Date"
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
-            children: "Action"
-          })]
-        })
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tbody", {
-        children: courses.length > 0 ? courses.map((course, index) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("tr", {
-          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
-            children: course.course_id
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
-            children: course.user_login
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
-            children: course.password
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
-            children: course.enrolment_date
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
-            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("a", {
-              target: "_blank",
-              rel: "noopener noreferrer",
-              className: "woocommerce-button wp-element-button moowoodle",
-              href: course.moodle_url,
-              children: "View"
-            })
-          })]
-        }, index)) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tr", {
-          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
-            colSpan: "5",
-            className: "no-data-row",
-            children: "You haven't purchased any courses yet."
+  const handleCreateGroup = async e => {
+    e.preventDefault();
+    // Implement API call to create a new group
+    console.log("Creating group:", newGroupName, selectedProducts);
+    setIsModalOpen(false);
+  };
+  if (loading) return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("p", {
+    children: "Loading groups..."
+  });
+  if (error) return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("p", {
+    children: error
+  });
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("h3", {
+      children: "My Groups"
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("button", {
+      onClick: () => setIsModalOpen(true),
+      children: "Add Group"
+    }), groups.length > 0 ? groups.map(group => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("h4", {
+        children: group.group_name
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("table", {
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("thead", {
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("tr", {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("th", {
+              children: "Product Name"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("th", {
+              children: "Total Quantity"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("th", {
+              children: "Available Quantity"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("th", {
+              children: "Enroll User"
+            })]
           })
-        })
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("tbody", {
+          children: group.products.map(item => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("tr", {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("td", {
+              children: item.product_name
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("td", {
+              children: item.total_quantity
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("td", {
+              children: item.available_quantity
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("td", {
+              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("a", {
+                href: item.enroll_url,
+                target: "_blank",
+                rel: "noopener noreferrer",
+                children: "View"
+              })
+            })]
+          }, item.product_id))
+        })]
       })]
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
-      className: "pagination",
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
-        disabled: currentPage === 1,
-        onClick: () => setCurrentPage(prev => prev - 1),
-        children: "Previous"
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("span", {
-        children: ["Page ", currentPage, " of ", totalPages]
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
-        disabled: currentPage === totalPages,
-        onClick: () => setCurrentPage(prev => prev + 1),
-        children: "Next"
+    }, group.group_id)) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("p", {
+      children: "You have no groups yet."
+    }), isModalOpen && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+      className: "modal",
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("h2", {
+        children: "Add New Group"
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("form", {
+        onSubmit: handleCreateGroup,
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
+          children: "Group Name:"
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("input", {
+          value: newGroupName,
+          onChange: e => setNewGroupName(e.target.value),
+          required: true
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
+          children: "Select Products:"
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("select", {
+          multiple: true,
+          onChange: e => setSelectedProducts([...e.target.selectedOptions].map(o => o.value)),
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("option", {
+            value: "1",
+            children: "Sample Course 1"
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("option", {
+            value: "2",
+            children: "Sample Course 2"
+          })]
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("button", {
+          type: "submit",
+          children: "Create Group"
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("button", {
+          type: "button",
+          onClick: () => setIsModalOpen(false),
+          children: "Cancel"
+        })]
       })]
     })]
   });
 };
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (MyCourse);
-
-/***/ }),
-
-/***/ "./src/services/apiService.js":
-/*!************************************!*\
-  !*** ./src/services/apiService.js ***!
-  \************************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   getApiLink: () => (/* binding */ getApiLink),
-/* harmony export */   getApiResponse: () => (/* binding */ getApiResponse),
-/* harmony export */   sendApiResponse: () => (/* binding */ sendApiResponse)
-/* harmony export */ });
-/* harmony import */ var axios__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! axios */ "./node_modules/axios/lib/axios.js");
-/**
- * Core API service module
- */
-
-
-
-/**
- * Get response from rest api.
- * @param {String} url 
- * @param {Object} headers 
- */
-const getApiResponse = async (url, headers) => {
-  try {
-    const result = await axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(url, headers);
-    return result.data;
-  } catch (error) {
-    console.error(`Error: fetching data on url ${url} `);
-    console.error(`ErrorObject: ${error}`);
-  }
-};
-
-/**
- * Send response to rest api.
- * @param {String} url 
- * @param {Object} data 
- * @param {Object} headers 
- */
-const sendApiResponse = async (url, data, headers = {}) => {
-  try {
-    const result = await axios__WEBPACK_IMPORTED_MODULE_0__["default"].post(url, data, {
-      headers: {
-        'X-WP-Nonce': appLocalizer.nonce,
-        ...headers
-      }
-    });
-    return result.data;
-  } catch (error) {
-    console.error(`Error: sending data on url ${url} `);
-    console.error(`ErrorObject: ${error}`);
-  }
-};
-
-/**
- * Get the rest api url from endpoint.
- * @param {String} endpoint 
- * @param {String} namespace
- * @param {String} rootUrl 
- * @returns 
- */
-const getApiLink = (endpoint, namespace = null, rootUrl = null) => {
-  rootUrl = rootUrl || appLocalizer.apiUrl;
-  namespace = namespace || appLocalizer.restUrl;
-  return `${rootUrl}/${namespace}/${endpoint}`;
-};
-
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (MyGroups);
 
 /***/ }),
 
@@ -13178,14 +13129,14 @@ const asap = typeof queueMicrotask !== 'undefined' ?
 var __webpack_exports__ = {};
 // This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
 (() => {
-/*!***************************************!*\
-  !*** ./src/blocks/MyCourses/index.js ***!
-  \***************************************/
+/*!**************************************!*\
+  !*** ./src/blocks/MyGroups/index.js ***!
+  \**************************************/
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _wordpress_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @wordpress/element */ "@wordpress/element");
 /* harmony import */ var _wordpress_element__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_wordpress_element__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var react_router_dom__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router-dom/dist/index.js");
-/* harmony import */ var _MyCourse_jsx__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./MyCourse.jsx */ "./src/blocks/MyCourses/MyCourse.jsx");
+/* harmony import */ var _MyGroups__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./MyGroups */ "./src/blocks/MyGroups/MyGroups.jsx");
 /* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react/jsx-runtime */ "react/jsx-runtime");
 /* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__);
 
@@ -13195,8 +13146,8 @@ __webpack_require__.r(__webpack_exports__);
 // Render the App component into the DOM
 
 (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_0__.render)(/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)(react_router_dom__WEBPACK_IMPORTED_MODULE_3__.BrowserRouter, {
-  children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)(_MyCourse_jsx__WEBPACK_IMPORTED_MODULE_1__["default"], {})
-}), document.getElementById('moowoodle-my-course'));
+  children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)(_MyGroups__WEBPACK_IMPORTED_MODULE_1__["default"], {})
+}), document.getElementById('moowoodle-my-group'));
 })();
 
 /******/ })()

@@ -17,7 +17,8 @@ class RestAPI {
         if ( current_user_can( 'manage_options' ) ) {
             add_action( 'rest_api_init', [ &$this, 'register' ] );
         }
-        add_action( 'rest_api_init', [ &$this, 'register' ] );
+
+        add_action( 'rest_api_init', [ &$this, 'register_user_api' ] );
     }
 
     /**
@@ -80,12 +81,19 @@ class RestAPI {
         ]);
     }
 
-    public function reg(){
+    public function register_user_api(){
+
         register_rest_route( MooWoodle()->rest_namespace, '/get-user-courses', [
             'methods'             => \WP_REST_Server::ALLMETHODS,
             'callback'            =>[ $this, 'get_user_courses' ],
             //'permission_callback' =>[ $this, 'moowoodle_permission' ],
         ]);
+        register_rest_route( MooWoodle()->rest_namespace, '/get-user-groups', [
+            'methods'             => \WP_REST_Server::ALLMETHODS,
+            'callback'            =>[ $this, 'get_user_groups' ],
+            //'permission_callback' =>[ $this, 'moowoodle_permission' ],
+        ]);
+
     }
 
     /**
@@ -414,58 +422,130 @@ class RestAPI {
      * @return \WP_Error|\WP_REST_Response
      */
     public function get_user_courses( $request ) {
-        file_put_contents( WP_CONTENT_DIR . '/mo_file_log.txt', 'response:restin'. var_export("yes", true) . "\n", FILE_APPEND );
+        global $wpdb;
         $customer = wp_get_current_user();
-    
+
         if ( !$customer->ID ) {
             return new \WP_Error( 'no_user', __( 'User not found', 'moowoodle' ), [ 'status' => 403 ] );
         }
-    
+
         // Get pagination parameters
         $per_page = $request->get_param( 'row' ) ?: 10; // Default to 10 courses per page
         $page     = $request->get_param( 'page' ) ?: 1;
-    
-        // Query customer orders
-        $args = [
-            'customer_id'    => $customer->ID,
-            'status'         => 'wc-completed',
-            'orderby'        => 'date',
-            'order'          => 'DESC',
-            'posts_per_page' => $per_page,
-            'paged'          => $page,
-        ];
-    
-        $customer_orders = wc_get_orders( $args );
-        $total_orders    = count( wc_get_orders( [ 'customer_id' => $customer->ID, 'status' => 'wc-completed' ] ) );
-    
-        // Format orders data
-        $formatted_orders = [];
-        foreach ( $customer_orders as $order ) {
-            foreach ( $order->get_items() as $item ) {
-                $product_id       = $item->get_product_id();
-                $moodle_course_id = get_post_meta( $product_id, 'moodle_course_id', true );
-                $moodle_url       = trailingslashit( MooWoodle()->setting->get_setting( 'moodle_url' ) ) . 'course/view.php?id=' . $moodle_course_id;
-    
-                $formatted_orders[] = [
-                    'order_id'       => $order->get_id(),
-                    'course_name'    => $item->get_name(),
-                    'user_login'     => $customer->user_login,
-                    'password'       => get_user_meta( $customer->ID, 'moowoodle_moodle_user_pwd', true ),
-                    'enrolment_date' => date( 'M j, Y - H:i', strtotime( $order->get_date_created() ) ),
-                    'moodle_url'     => $moodle_url,
-                ];
-            }
+        $offset   = ( $page - 1 ) * $per_page;
+
+        // Define the table name
+        $table_name = $wpdb->prefix . 'moowoodle_enrollment'; // Adjusted table name
+
+        // Query total courses
+        $total_courses = $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$table_name} WHERE user_id = %d AND status = 'enrolled'", 
+            $customer->ID
+        ));
+
+        // Fetch paginated courses
+        $courses = $wpdb->get_results( $wpdb->prepare(
+            "SELECT course_id, order_id, item_id, date FROM {$table_name} 
+            WHERE user_id = %d AND status = 'enrolled' 
+            ORDER BY date DESC 
+            LIMIT %d OFFSET %d", 
+            $customer->ID, $per_page, $offset
+        ));
+
+        // Format courses
+        $formatted_courses = [];
+        foreach ( $courses as $course ) {
+            $moodle_course_id = $course->course_id;
+            $moodle_url       = trailingslashit( MooWoodle()->setting->get_setting( 'moodle_url' ) ) . 'course/view.php?id=' . $moodle_course_id;
+
+            $formatted_courses[] = [
+                'course_id'      => $course->course_id,
+                'order_id'       => $course->order_id,
+                'item_id'        => $course->item_id,
+                'user_login'     => $customer->user_login,
+                'password'       => get_user_meta( $customer->ID, 'moowoodle_moodle_user_pwd', true ),
+                'enrolment_date' => date( 'M j, Y - H:i', strtotime( $course->date ) ),
+                'moodle_url'     => $moodle_url,
+            ];
         }
-    
+
         return rest_ensure_response( [
-            'total_courses' => $total_orders,
+            'total_courses' => $total_courses,
             'page'          => $page,
             'per_page'      => $per_page,
-            'total_pages'   => ceil( $total_orders / $per_page ),
-            'courses'       => $formatted_orders,
+            'total_pages'   => ceil( $total_courses / $per_page ),
+            'courses'       => $formatted_courses,
         ] );
     }
-    
+    /**
+     * Fetch user groups and their items
+     * @param mixed $request
+     * @return \WP_Error|\WP_REST_Response
+     */
+    public function get_user_groups( $request ) {
+        global $wpdb;
+        $customer = wp_get_current_user();
+
+        if ( ! $customer->ID ) {
+            return new \WP_Error( 'no_user', __( 'User not found', 'moowoodle' ), [ 'status' => 403 ] );
+        }
+
+        // Fetch user groups
+        $groups = $wpdb->get_results( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}moowoodle_group WHERE user_id = %d",
+            $customer->ID
+        ));
+
+        if ( empty( $groups ) ) {
+            return rest_ensure_response( [ 'groups' => [] ] );
+        }
+
+        $formatted_groups = [];
+
+        foreach ( $groups as $group ) {
+            // Fetch items related to this group
+            $group_items = $wpdb->get_results( $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}moowoodle_group_items WHERE group_id = %d",
+                $group->id
+            ));
+
+            $formatted_items = [];
+
+            foreach ( $group_items as $item ) {
+                $product = wc_get_product( $item->product_id );
+
+                if ( $product ) {
+                    $enroll_url = wc_get_endpoint_url( 'view-enroll', $product->get_id(), wc_get_page_permalink( 'myaccount' ) );
+                    $enroll_url = add_query_arg( [
+                        'groupId'    => $group->id,
+                        'groupItemId' => $item->id,
+                    ], $enroll_url );
+
+                    $formatted_items[] = [
+                        'course_id'         => $item->course_id,
+                        'product_id'        => $item->product_id,
+                        'product_name'      => $product->get_name(),
+                        'total_quantity'    => $item->total_quantity,
+                        'available_quantity'=> $item->available_quantity,
+                        'status'            => $item->status,
+                        'enroll_url'        => $enroll_url,
+                    ];
+                }
+            }
+
+            $formatted_groups[] = [
+                'group_id'   => $group->id,
+                'group_name' => $group->name,
+                'order_id'   => $group->order_id,
+                'user_name'  => $group->user_name,
+                'products'   => $formatted_items,
+            ];
+        }
+
+        return rest_ensure_response( [ 'groups' => $formatted_groups ] );
+    }
+
+
     /**
      * get all courses
      * @param mixed $request
