@@ -15,6 +15,22 @@ class Enrollment {
 		add_action( 'woocommerce_after_shop_loop_item_title', [ &$this, 'add_dates_with_product' ] );
 		add_action( 'woocommerce_product_meta_start', [ &$this, 'add_dates_with_product' ] );
 	}
+    //--------------------------------------------------------------------------------------
+
+	public function enroll_moowoodle_user( $enroll_data ) {
+		
+		if( is_array( $enroll_data ) && empty( $enroll_data ) ) {
+
+		}
+		
+	}
+
+
+
+
+
+
+	//---------------------------------------------------------------------------------------
 
 	/**
 	 * Process the oreder when order status is complete.
