@@ -5,14 +5,12 @@ namespace MooWoodle;
 class EndPoint {
     private $endpoint_slug_course = 'my-courses';
 	private $endpoint_slug_group = 'my-groups';
-	private $endpoint_slug_view_enroll = 'view-enroll';
 	
 	public function __construct() {
 
 		// register enpoints.
 		add_action( 'init', [ &$this, 'register_my_courses_endpoint' ] );
 		add_action( 'init', [ &$this, 'register_my_groups_endpoint' ] );
-		add_action( 'init', [ &$this, 'register_view_enroll_endpoint' ] );
 
 		// Resister 'my_course','my-group' end point page in WooCommerce 'my_account'.
 		add_filter( 'woocommerce_account_menu_items', [ &$this, 'add_my_courses_to_account_menu' ] );
@@ -23,7 +21,6 @@ class EndPoint {
 		// Put endpoint containt. 
 		add_action('woocommerce_account_' . $this->endpoint_slug_course . '_endpoint', [ &$this, 'load_my_courses_account_endpoint' ] );
 		add_action('woocommerce_account_' . $this->endpoint_slug_group . '_endpoint', [ &$this, 'load_my_groups_account_endpoint' ] );
-		add_action('woocommerce_account_' . $this->endpoint_slug_view_enroll . '_endpoint', [ &$this, 'load_view_enroll_account_endpoint' ] );
 		add_action('wp_enqueue_scripts', [ $this, 'frontend_scripts' ]);
     }
 
@@ -165,21 +162,43 @@ class EndPoint {
 	 * @return void
 	 */
 
-	public function load_view_enroll_account_endpoint($product_id) {
+	// public function load_view_enroll_account_endpoint($product_id) {
 
-		// Get group_id from query parameter using filter_input
-		$group_id = filter_input(INPUT_GET, 'groupId', FILTER_SANITIZE_NUMBER_INT) ?: 0;
-		$group_item_id = filter_input(INPUT_GET, 'groupItemId', FILTER_SANITIZE_NUMBER_INT) ?: 0;
+	// 	// Get group_id from query parameter using filter_input
+	// 	$group_id = filter_input(INPUT_GET, 'groupId', FILTER_SANITIZE_NUMBER_INT) ?: 0;
+	// 	$group_item_id = filter_input(INPUT_GET, 'groupItemId', FILTER_SANITIZE_NUMBER_INT) ?: 0;
 
-		// Load template with both product_id and group_id
-		Util::get_template('endpoints/view-enroll.php', [
-			'product_id' => $product_id,
-			'group_id' => $group_id,
-			'group_item_id' => $group_item_id,
-		]);
-		// $this->frontend_scripts();
+	// 	// Load template with both product_id and group_id
+	// 	Util::get_template('endpoints/view-enroll.php', [
+	// 		'product_id' => $product_id,
+	// 		'group_id' => $group_id,
+	// 		'group_item_id' => $group_item_id,
+	// 	]);
+	// 	// $this->frontend_scripts();
+	// }
+
+	public function load_view_enroll_account_endpoint() {
+		wp_enqueue_script(
+			'moowoodle-myaccount-view-enroll-script',
+			MOOWOODLE_PLUGIN_URL . 'build/blocks/ViewEnroll/index.js',
+			['wp-element', 'wp-i18n', 'react-jsx-runtime'],
+			time(),
+			true
+		);
+
+		wp_localize_script(
+			'moowoodle-myaccount-view-enroll-script',
+			'appLocalizer',
+			[
+				'apiUrl'          => untrailingslashit( get_rest_url() ),
+				'restUrl'         => 'moowoodle/v1',
+				'nonce'           => wp_create_nonce('wp_rest'),
+				'moodle_site_url' => MooWoodle()->setting->get_setting( 'moodle_url' ),
+			]
+		);
+		
+		echo '<div id="moowoodle-view-enroll"></div>';
 	}
-
 	/**
 	 * Add frontend style in mycourse page
 	 * @access public

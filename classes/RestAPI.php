@@ -86,12 +86,14 @@ class RestAPI {
         register_rest_route( MooWoodle()->rest_namespace, '/get-user-courses', [
             'methods'             => \WP_REST_Server::ALLMETHODS,
             'callback'            =>[ $this, 'get_user_courses' ],
-            //'permission_callback' =>[ $this, 'moowoodle_permission' ],
         ]);
         register_rest_route( MooWoodle()->rest_namespace, '/get-user-groups', [
             'methods'             => \WP_REST_Server::ALLMETHODS,
             'callback'            =>[ $this, 'get_user_groups' ],
-            //'permission_callback' =>[ $this, 'moowoodle_permission' ],
+        ]);
+        register_rest_route( MooWoodle()->rest_namespace, '/get-user-enrollments-by-group-item-id', [
+            'methods'             => \WP_REST_Server::ALLMETHODS,
+            'callback'            =>[ $this, 'get_user_enrollments_by_group_item_id' ],
         ]);
 
     }
@@ -485,65 +487,117 @@ class RestAPI {
     public function get_user_groups( $request ) {
         global $wpdb;
         $customer = wp_get_current_user();
-
-        if ( ! $customer->ID ) {
+    
+        if ( !$customer->ID ) {
             return new \WP_Error( 'no_user', __( 'User not found', 'moowoodle' ), [ 'status' => 403 ] );
         }
-
-        // Fetch user groups
+    
+        // Fetch all groups for the current user
         $groups = $wpdb->get_results( $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}moowoodle_group WHERE user_id = %d",
+            "SELECT * FROM {$wpdb->prefix}moowoodle_group WHERE user_id = %d ORDER BY created DESC", 
             $customer->ID
         ));
-
+    
         if ( empty( $groups ) ) {
             return rest_ensure_response( [ 'groups' => [] ] );
         }
-
+    
         $formatted_groups = [];
-
+    
         foreach ( $groups as $group ) {
-            // Fetch items related to this group
+            // Fetch all items for this group
             $group_items = $wpdb->get_results( $wpdb->prepare(
                 "SELECT * FROM {$wpdb->prefix}moowoodle_group_items WHERE group_id = %d",
                 $group->id
             ));
-
+    
             $formatted_items = [];
-
+    
             foreach ( $group_items as $item ) {
                 $product = wc_get_product( $item->product_id );
-
+    
                 if ( $product ) {
+                    // Generate enroll URL
                     $enroll_url = wc_get_endpoint_url( 'view-enroll', $product->get_id(), wc_get_page_permalink( 'myaccount' ) );
                     $enroll_url = add_query_arg( [
                         'groupId'    => $group->id,
                         'groupItemId' => $item->id,
                     ], $enroll_url );
-
+    
                     $formatted_items[] = [
+                        'id'                => $item->id,
+                        'group_id'          => $item->group_id,
                         'course_id'         => $item->course_id,
                         'product_id'        => $item->product_id,
-                        'product_name'      => $product->get_name(),
+                        'user_id'           => $item->user_id,
                         'total_quantity'    => $item->total_quantity,
                         'available_quantity'=> $item->available_quantity,
                         'status'            => $item->status,
-                        'enroll_url'        => $enroll_url,
+                        'enroll_url'        => $enroll_url, // Added enroll URL
                     ];
                 }
             }
-
+    
             $formatted_groups[] = [
                 'group_id'   => $group->id,
                 'group_name' => $group->name,
                 'order_id'   => $group->order_id,
                 'user_name'  => $group->user_name,
-                'products'   => $formatted_items,
+                'items'      => $formatted_items,
+            ];
+        }
+    
+        return rest_ensure_response( [ 'groups' => $formatted_groups ] );
+    }
+        
+    /**
+     * Fetch enrolled users by group_item_id
+     * @param WP_REST_Request $request
+     * @return WP_Error|WP_REST_Response
+     */
+    public function get_user_enrollments_by_group_item_id( $request ) {
+        global $wpdb;
+        $customer = wp_get_current_user();
+
+        if ( !$customer->ID ) {
+            return new \WP_Error( 'no_user', __( 'User not found', 'moowoodle' ), [ 'status' => 403 ] );
+        }
+
+        $group_item_id = $request->get_param('group_item_id');
+
+        if ( empty( $group_item_id ) ) {
+            return new \WP_Error( 'invalid_param', __( 'group_item_id is required', 'moowoodle' ), [ 'status' => 400 ] );
+        }
+
+        // Fetch enrollment details based on group_item_id
+        $enrollments = $wpdb->get_results( $wpdb->prepare(
+            "SELECT e.user_email, e.date 
+            FROM {$wpdb->prefix}moowoodle_enrollment e
+            WHERE e.group_item_id = %d",
+            $group_item_id
+        ));
+
+        if ( empty( $enrollments ) ) {
+            return rest_ensure_response( [ 'enrollments' => [] ] );
+        }
+
+        $formatted_enrollments = [];
+
+        foreach ( $enrollments as $enrollment ) {
+            $user = get_user_by( 'email', $enrollment->user_email );
+            $username = $user ? $user->user_login : __( 'Unknown User', 'moowoodle' );
+
+            $formatted_enrollments[] = [
+                'name'  => $username,
+                'email' => $enrollment->user_email,
+                'date'  => date( 'Y-m-d H:i:s', strtotime( $enrollment->date ) ),
             ];
         }
 
-        return rest_ensure_response( [ 'groups' => $formatted_groups ] );
+        return rest_ensure_response( [ 'enrollments' => $formatted_enrollments ] );
     }
+
+    
 
 
     /**
