@@ -122,9 +122,10 @@ class Ajax {
 		// 	}
 		// }
 
-		update_user_meta( $user_id, 'moowoodle_moodle_user_id', $moodle_user_id );
+		//update_user_meta( $user_id, 'moowoodle_moodle_user_id', $moodle_user_id );
 		return $moodle_user_id;
 	}
+
 	private function search_for_moodle_user( $key, $value ) {
 		// find user on moodle with moodle externel function.
 		$response = MooWoodle()->external_service->do_request(
