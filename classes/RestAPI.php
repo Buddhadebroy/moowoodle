@@ -56,12 +56,6 @@ class RestAPI {
             'permission_callback' =>[ $this, 'moowoodle_permission' ],
         ]);
 
-        register_rest_route( MooWoodle()->rest_namespace, '/get-user-courses', [
-            'methods'             => \WP_REST_Server::ALLMETHODS,
-            'callback'            =>[ $this, 'get_user_courses' ],
-            //'permission_callback' =>[ $this, 'moowoodle_permission' ],
-        ]);
-
         register_rest_route( MooWoodle()->rest_namespace, '/all-courses', [
             'methods'             => \WP_REST_Server::ALLMETHODS,
             'callback'            =>[ $this, 'get_all_courses' ],
@@ -86,15 +80,24 @@ class RestAPI {
         register_rest_route( MooWoodle()->rest_namespace, '/get-user-courses', [
             'methods'             => \WP_REST_Server::ALLMETHODS,
             'callback'            =>[ $this, 'get_user_courses' ],
+            'permission_callback' => '__return_true',
         ]);
         register_rest_route( MooWoodle()->rest_namespace, '/get-user-groups', [
             'methods'             => \WP_REST_Server::ALLMETHODS,
             'callback'            =>[ $this, 'get_user_groups' ],
+            'permission_callback' => '__return_true',
         ]);
         register_rest_route( MooWoodle()->rest_namespace, '/get-user-enrollments-by-group-item-id', [
             'methods'             => \WP_REST_Server::ALLMETHODS,
             'callback'            =>[ $this, 'get_user_enrollments_by_group_item_id' ],
+            'permission_callback' => '__return_true',
         ]);
+        register_rest_route( MooWoodle()->rest_namespace, '/enroll-user', [
+            'methods'             => \WP_REST_Server::ALLMETHODS,
+            'callback'            =>[ $this, 'enroll_user' ],
+            'permission_callback' => '__return_true',
+        ]);
+
 
     }
 
@@ -418,7 +421,135 @@ class RestAPI {
 		}
         return rest_ensure_response( $formatted_courses );
     }
+
     /**
+     * get all courses
+     * @param mixed $request
+     * @return \WP_Error|\WP_REST_Response
+     */
+	public function get_all_courses($request) {
+        $nonce = $request->get_header( 'X-WP-Nonce' );
+        if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+            return new \WP_Error( 'invalid_nonce', __('Invalid nonce', 'multivendorx'), array( 'status' => 403 ) );
+        }
+		$course_ids = MooWoodle()->course->get_courses([
+            'fields'      => 'ids',
+            'numberposts' => -1,
+        ]);
+
+		$all_courses = $all_products = $all_category = $all_short_name = [];
+		foreach ( $course_ids as $course_id ) {
+			$all_courses[$course_id] = get_the_title( $course_id );
+            $products = wc_get_products([
+                'meta_query' => [
+                    [
+                        'key'   => 'linked_course_id',
+                        'value' => $course_id,
+                    ]
+                ]
+            ]);
+            foreach ( $products as $product ) {
+				$all_products[$product->get_id()] = $product->get_name();
+			}
+
+            $course_meta = get_post_meta( $course_id, '_category_id', true );
+            $term = MooWoodle()->category->get_category( $course_meta, 'course_cat' );
+			$all_category[$course_meta] = $term->name;
+
+            $course_meta = get_post_meta( $course_id, '_course_short_name', true );
+			$all_short_name[] = $course_meta;
+		}
+
+        $all_data = [
+            'courses'   => $all_courses,
+            'products'   => $all_products,
+            'category'   => $all_category,
+            'shortname'   => $all_short_name
+        ];
+		
+        return rest_ensure_response( $all_data );
+	}
+
+    /**
+     * Save the setting set in react's admin setting page.
+     * @param mixed $request
+     * @return \WP_Error|\WP_REST_Response
+     */
+    public function get_log( $request ) {
+        global $wp_filesystem;
+        if ( ! $wp_filesystem ) {
+            require_once ABSPATH . '/wp-admin/includes/file.php';
+            WP_Filesystem();
+        }
+
+        $nonce = $request->get_header( 'X-WP-Nonce' );
+        if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+            return new \WP_Error( 'invalid_nonce', __('Invalid nonce', 'multivendorx'), array( 'status' => 403 ) );
+        }
+
+        $log_count = $request->get_param( 'logcount' );
+        $log_count = $log_count ? $log_count : 100;
+
+        $clear     = $request->get_param( 'clear' );
+
+        if ( $clear ) {
+            $wp_filesystem->delete( MooWoodle()->log_file );
+            // delete the logfile name from options table
+            delete_option( 'moowoodle_log_file' );
+
+            return rest_ensure_response( true );
+        }
+
+        $logs = [];
+
+        if ( file_exists( MooWoodle()->log_file ) ) {   
+            // Get the contents of the log file using the filesystem API
+            $log_content = $wp_filesystem->get_contents( MooWoodle()->log_file );
+            if ( ! empty( $log_content ) ) {
+                $logs = explode( "\n", $log_content );
+            }
+        }
+        
+        return rest_ensure_response( array_reverse( array_slice( $logs, - $log_count ) ) );
+    }
+
+    /**
+     * Download the log.
+     * @param mixed $request
+     * @return \WP_Error|\WP_REST_Response
+     */
+    function download_log($request) {
+        $nonce = $request->get_header( 'X-WP-Nonce' );
+        if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+            return new \WP_Error( 'invalid_nonce', __('Invalid nonce', 'multivendorx'), array( 'status' => 403 ) );
+        } 
+        // Get the file parameter from the request
+        $file = $request->get_param('file');
+        $file = basename($file);
+        $filePath = MOOWOODLE_LOGS_DIR . '/' . $file;
+
+        // Check if the file exists and has the right extension
+        if (file_exists($filePath) && preg_match('/\.(txt|log)$/', $file)) {
+            // Set headers to force download
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="' . $file . '"');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate');
+            header('Pragma: public');
+            header('Content-Length: ' . filesize($filePath));
+    
+            // Clear output buffer and read the file
+            ob_clean();
+            flush();
+            readfile($filePath);
+            exit;
+        } else {
+            return new \WP_Error('file_not_found', 'File not found', array('status' => 404));
+        }
+    }
+
+        /**
      * Fetch all course
      * @param mixed $request
      * @return \WP_Error|\WP_REST_Response
@@ -596,135 +727,70 @@ class RestAPI {
 
         return rest_ensure_response( [ 'enrollments' => $formatted_enrollments ] );
     }
-
-    
-
-
     /**
-     * get all courses
-     * @param mixed $request
-     * @return \WP_Error|\WP_REST_Response
+     * Enroll a user by group_item_id
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
      */
-	public function get_all_courses($request) {
-        $nonce = $request->get_header( 'X-WP-Nonce' );
-        if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
-            return new \WP_Error( 'invalid_nonce', __('Invalid nonce', 'multivendorx'), array( 'status' => 403 ) );
-        }
-		$course_ids = MooWoodle()->course->get_courses([
-            'fields'      => 'ids',
-            'numberposts' => -1,
-        ]);
+    public function enroll_user($request) {
+        // Get parameters from request
+        $params = $request->get_params();
+        $email = sanitize_email($params['email'] ?? '');
+        $name = sanitize_text_field($params['name'] ?? '');
+        $group_item_id = intval($params['group_item_id'] ?? 0);
+        $course_id = intval($params['course_id'] ?? 0);
+        $order_id = intval($params['order_id'] ?? 0);
 
-		$all_courses = $all_products = $all_category = $all_short_name = [];
-		foreach ( $course_ids as $course_id ) {
-			$all_courses[$course_id] = get_the_title( $course_id );
-            $products = wc_get_products([
-                'meta_query' => [
-                    [
-                        'key'   => 'linked_course_id',
-                        'value' => $course_id,
-                    ]
-                ]
+        // Validate required fields
+        if (!$email || !$name || !$group_item_id) {
+            return rest_ensure_response([
+                'success' => false,
+                'message' => __('Email, name, and group_item_id are required.', 'moowoodle'),
             ]);
-            foreach ( $products as $product ) {
-				$all_products[$product->get_id()] = $product->get_name();
-			}
-
-            $course_meta = get_post_meta( $course_id, '_category_id', true );
-            $term = MooWoodle()->category->get_category( $course_meta, 'course_cat' );
-			$all_category[$course_meta] = $term->name;
-
-            $course_meta = get_post_meta( $course_id, '_course_short_name', true );
-			$all_short_name[] = $course_meta;
-		}
-
-        $all_data = [
-            'courses'   => $all_courses,
-            'products'   => $all_products,
-            'category'   => $all_category,
-            'shortname'   => $all_short_name
-        ];
-		
-        return rest_ensure_response( $all_data );
-	}
-
-    /**
-     * Save the setting set in react's admin setting page.
-     * @param mixed $request
-     * @return \WP_Error|\WP_REST_Response
-     */
-    public function get_log( $request ) {
-        global $wp_filesystem;
-        if ( ! $wp_filesystem ) {
-            require_once ABSPATH . '/wp-admin/includes/file.php';
-            WP_Filesystem();
         }
 
-        $nonce = $request->get_header( 'X-WP-Nonce' );
-        if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
-            return new \WP_Error( 'invalid_nonce', __('Invalid nonce', 'multivendorx'), array( 'status' => 403 ) );
+        // Validate email format
+        if (!is_email($email)) {
+            return rest_ensure_response([
+                'success' => false,
+                'message' => __('Invalid email address.', 'moowoodle'),
+            ]);
         }
 
-        $log_count = $request->get_param( 'logcount' );
-        $log_count = $log_count ? $log_count : 100;
+        // Check if user exists by email, otherwise create a new user
+        $user = get_user_by('email', $email);
+        if (!$user) {
+            $password = wp_generate_password(12, false);
+            $user_id = wp_create_user($email, $password, $email);
 
-        $clear     = $request->get_param( 'clear' );
-
-        if ( $clear ) {
-            $wp_filesystem->delete( MooWoodle()->log_file );
-            // delete the logfile name from options table
-            delete_option( 'moowoodle_log_file' );
-
-            return rest_ensure_response( true );
-        }
-
-        $logs = [];
-
-        if ( file_exists( MooWoodle()->log_file ) ) {   
-            // Get the contents of the log file using the filesystem API
-            $log_content = $wp_filesystem->get_contents( MooWoodle()->log_file );
-            if ( ! empty( $log_content ) ) {
-                $logs = explode( "\n", $log_content );
+            if (is_wp_error($user_id)) {
+                return rest_ensure_response([
+                    'success' => false,
+                    'message' => __('Failed to create user: ', 'moowoodle') . $user_id->get_error_message(),
+                ]);
             }
-        }
-        
-        return rest_ensure_response( array_reverse( array_slice( $logs, - $log_count ) ) );
-    }
 
-    /**
-     * Download the log.
-     * @param mixed $request
-     * @return \WP_Error|\WP_REST_Response
-     */
-    function download_log($request) {
-        $nonce = $request->get_header( 'X-WP-Nonce' );
-        if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
-            return new \WP_Error( 'invalid_nonce', __('Invalid nonce', 'multivendorx'), array( 'status' => 403 ) );
-        } 
-        // Get the file parameter from the request
-        $file = $request->get_param('file');
-        $file = basename($file);
-        $filePath = MOOWOODLE_LOGS_DIR . '/' . $file;
-
-        // Check if the file exists and has the right extension
-        if (file_exists($filePath) && preg_match('/\.(txt|log)$/', $file)) {
-            // Set headers to force download
-            header('Content-Description: File Transfer');
-            header('Content-Type: application/octet-stream');
-            header('Content-Disposition: attachment; filename="' . $file . '"');
-            header('Expires: 0');
-            header('Cache-Control: must-revalidate');
-            header('Pragma: public');
-            header('Content-Length: ' . filesize($filePath));
-    
-            // Clear output buffer and read the file
-            ob_clean();
-            flush();
-            readfile($filePath);
-            exit;
+            // Assign 'customer' role to new user
+            wp_update_user(['ID' => $user_id, 'role' => 'customer']);
         } else {
-            return new \WP_Error('file_not_found', 'File not found', array('status' => 404));
+            $user_id = $user->ID;
         }
+
+        // Prepare enrollment data
+        $enroll_data = [
+            'purchaser_id'  => $user_id,
+            'course_id'     => $course_id,
+            'order_id'      => $order_id,
+            'item_id'       => 0,
+            'group_item_id' => $group_item_id,
+            'suspend'       => 0,
+        ];
+        $response = Moowoodle()->enrollment->process_enrollment( $enroll_data );
+
+        // Return success response with enrollment data
+        return $response;
     }
+
+
     
 }

@@ -2,27 +2,23 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { getApiLink } from "../../services/apiService";
 
-const ViewEnroll = ({ groupItemId, onBack }) => {
+const ViewEnroll = ({ item, onBack }) => {
   const [enrolledUsers, setEnrolledUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({ name: "", email: "" });
 
   useEffect(() => {
     fetchEnrollments();
-  }, [groupItemId]);
-
+  }, [item.id]);
   const fetchEnrollments = async () => {
     try {
       const response = await axios.post(
         getApiLink("get-user-enrollments-by-group-item-id"),
-        { group_item_id: groupItemId },
+        { group_item_id: item.id }, // Use item.id
         { headers: { "X-WP-Nonce": appLocalizer.nonce } }
       );
-
       setEnrolledUsers(response.data.enrollments);
       setLoading(false);
     } catch (error) {
@@ -32,48 +28,50 @@ const ViewEnroll = ({ groupItemId, onBack }) => {
     }
   };
 
-  // Open/Close Modal
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
-  // Handle form input changes
   const handleChange = (e) => {
     setNewUser({ ...newUser, [e.target.name]: e.target.value });
   };
 
-  // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Add new user to the list (dummy implementation for now)
-    setEnrolledUsers([
-      ...enrolledUsers,
-      {
-        id: enrolledUsers.length + 1,
-        name: newUser.name,
-        email: newUser.email,
-        date: new Date().toISOString().slice(0, 19).replace("T", " "),
-      },
-    ]);
-
-    // Reset form and close modal
-    setNewUser({ name: "", email: "" });
-    closeModal();
+  
+    try {
+      const response = await axios.post(
+        getApiLink("enroll-user"),
+        {
+          group_item_id: item.id,
+          name: newUser.name,
+          email: newUser.email,
+          course_id: item.course_id,
+          order_id: item.order_id,
+        },
+        { headers: { "X-WP-Nonce": appLocalizer.nonce } }
+      );
+  
+      await fetchEnrollments();
+      setNewUser({ name: "", email: "" });
+      closeModal();
+    } catch (error) {
+      console.error("Error enrolling user:", error);
+      setError("Failed to enroll user.");
+    }
   };
+  
 
   return (
     <div className="enroll-container">
       <button onClick={onBack} className="back-btn">← Back to Groups</button>
-      <h3>Enrollments</h3>
+      <h3>Enrollments for Course ID: {item.course_id}</h3> {/* Display course_id from item */}
 
       {loading ? <p>Loading enrollments...</p> : error ? <p>{error}</p> : (
         <>
-          {/* Add User Button */}
           <button onClick={openModal} className="add-user-btn">
             + Add User
           </button>
 
-          {/* Enrollment Table */}
           <div className="table-container">
             <table>
               <thead>
@@ -103,7 +101,6 @@ const ViewEnroll = ({ groupItemId, onBack }) => {
         </>
       )}
 
-      {/* Modal for Adding User */}
       {isModalOpen && (
         <>
           <div className="modal-overlay" onClick={closeModal}></div>

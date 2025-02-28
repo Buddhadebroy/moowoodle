@@ -7,7 +7,7 @@ const MyGroups = () => {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedGroupItemId, setSelectedGroupItemId] = useState(null); // Stores only the selected group_item_id
+  const [selectedItem, setSelectedItem] = useState(null); // Stores full item object with order_id
 
   useEffect(() => {
     fetchGroups();
@@ -28,12 +28,20 @@ const MyGroups = () => {
     }
   };
 
+  const handleViewEnroll = (group, item) => {
+    // Combine item data with order_id from the parent group
+    setSelectedItem({
+      ...item,
+      order_id: group.order_id
+    });
+  };
+
   if (loading) return <p>Loading groups...</p>;
   if (error) return <p>{error}</p>;
 
-  // If a group item is selected, render the ViewEnroll component
-  if (selectedGroupItemId) {
-    return <ViewEnroll groupItemId={selectedGroupItemId} onBack={() => setSelectedGroupItemId(null)} />;
+  // If an item is selected, render the ViewEnroll component with full item data including order_id
+  if (selectedItem) {
+    return <ViewEnroll item={selectedItem} onBack={() => setSelectedItem(null)} />;
   }
 
   return (
@@ -65,7 +73,7 @@ const MyGroups = () => {
                     <td>{item.status}</td>
                     <td>
                       <button
-                        onClick={() => setSelectedGroupItemId(item.id)}
+                        onClick={() => handleViewEnroll(group, item)} // Pass group and item
                         className="view-enroll-btn"
                       >
                         View Enroll
