@@ -761,7 +761,7 @@ class RestAPI {
         $user = get_user_by('email', $email);
         if (!$user) {
             $password = wp_generate_password(12, false);
-            $user_id = wp_create_user($email, $password, $email);
+            $user_id = wp_create_user($name, $password, $email);
 
             if (is_wp_error($user_id)) {
                 return rest_ensure_response([

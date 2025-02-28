@@ -27,7 +27,65 @@ class Enrollment {
 
 		foreach( $order->get_items() as $item_id => $item ) {
 			// Enroll moodle user
-			if ( $item->get_quantity() == 1 ) {
+			if ($order->get_meta('_wc_billing/MooWoodle/gift_someone', true)) {
+				
+
+				$name  = $order->get_meta('_wc_billing/MooWoodle/full_name', true);
+				$email = $order->get_meta('_wc_billing/MooWoodle/email_address', true);
+
+				// Validate required fields
+				if (empty($name) || empty($email)) {
+					return rest_ensure_response([
+						'success' => false,
+						'message' => __('Name and Email are required.', 'moowoodle'),
+					]);
+				}
+
+				// Validate email format
+				if (!is_email($email)) {
+					return rest_ensure_response([
+						'success' => false,
+						'message' => __('Invalid email format.', 'moowoodle'),
+					]);
+				}
+
+				// Check if user exists by email, otherwise create a new user
+				$user = get_user_by('email', $email);
+				if (!$user) {
+					$password = wp_generate_password(12, false);
+					$user_id = wp_create_user($name, $password, $email);
+
+					if (is_wp_error($user_id)) {
+						return rest_ensure_response([
+							'success' => false,
+							'message' => __('Failed to create user: ', 'moowoodle') . $user_id->get_error_message(),
+						]);
+					}
+
+					// Assign 'customer' role to new user
+					wp_update_user(['ID' => $user_id, 'role' => 'customer']);
+				} else {
+					$user_id = $user->ID;
+				}
+
+				// Extract data from WooCommerce item object
+				$product_id = $item->get_product_id();  // Get product ID
+				$quantity   = $item->get_quantity();    // Get purchased quantity
+				$course_id  = get_post_meta($product_id, 'moodle_course_id', true); // Get associated Moodle course ID
+
+				// Prepare structured data array
+				$data = [
+					'order_id'  => $order->get_id(),   // Get order ID
+					'user_id'   => $user_id,
+					'user_name' => $name,
+					'product_id'=> $product_id,
+					'quantity'  => $quantity,
+					'course_id' => $course_id,
+				];
+
+				$this->create_customer_default_group_on_order( $data );
+
+			}else if ( $item->get_quantity() == 1 ) {
 
 				$enroll_data = [
 					'purchaser_id'  => $order->get_customer_id(),           
@@ -41,18 +99,33 @@ class Enrollment {
 				$this->process_enrollment( $enroll_data );
 
 			} else if ( $item->get_quantity() > 1 ) {
-				$this->create_customer_default_group_on_order( $order_id, $item );
+				$product_id = $item->get_product_id();  // Get product ID
+				$quantity   = $item->get_quantity();    // Get purchased quantity
+				$course_id  = get_post_meta($product_id, 'moodle_course_id', true); // Get associated Moodle course ID
+
+				$data = [
+					'order_id'  => $order->get_id(),   // Get order ID
+					'user_id'   => $order->get_customer_id(),
+					'user_name' => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+					'product_id'=> $product_id,
+					'quantity'  => $quantity,
+					'course_id' => $course_id,
+				];
+				$this->create_customer_default_group_on_order( $data );
 			}
 		}
 			
 	}
-
-	function create_customer_default_group_on_order( $order_id, $item ) {
+	function create_customer_default_group_on_order( $data ) {
 		global $wpdb;
-		
-		$order = wc_get_order($order_id);
-		$user_id = $order->get_user_id();
-		$user_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
+	
+		// Extract values from the data array
+		$order_id   = $data['order_id'];
+		$user_id    = $data['user_id'];
+		$user_name  = $data['user_name'];
+		$product_id = $data['product_id'];
+		$quantity   = $data['quantity'];
+		$course_id  = $data['course_id'];
 	
 		$default_group_name = 'Classroom';
 	
@@ -64,7 +137,7 @@ class Enrollment {
 				$default_group_name
 			)
 		);
-		
+	
 		// If no default group exists for this customer, create a new one
 		if (is_null($customer_group)) {
 			$wpdb->insert(
@@ -84,12 +157,8 @@ class Enrollment {
 			// If the group exists, use its ID
 			$group_id = $customer_group->id;
 		}
-		$order->update_meta_data( 'moodle_group_created', true );
-		
-		$product_id = $item->get_product_id();
-		$quantity = $item->get_quantity();
-		$course_id = get_post_meta($product_id, 'moodle_course_id', true);
-
+	
+		// Insert the product into the group items table
 		$wpdb->insert(
 			$wpdb->prefix . 'moowoodle_group_items',
 			array(
@@ -99,11 +168,14 @@ class Enrollment {
 				'user_id'           => $user_id,
 				'total_quantity'    => $quantity,
 				'available_quantity'=> $quantity,
-				'status'            => 'unenroll', // Default status, can be changed as needed
+				'status'            => 'unenroll', // Default status
 			),
 			array('%d', '%d', '%d', '%d', '%d', '%d', '%s')
 		);
-	}	
+	}
+	
+
+
 	/**
 	 * Process the enrollment when the order status is complete and when adding any user to any group
 	 *
@@ -465,8 +537,8 @@ class Enrollment {
 		]);
 	
 		$previous_enrolled_courses[] = $enroll_data['course_id'];
-		update_user_meta($enroll_data['purchaser_id'], 'moowoodle_moodle_course_enroll', $previous_enrolled_courses);  // Changed from user_id to purchaser_id
-		do_action('moowoodle_after_enrol_moodle_user', $enrolments, $enroll_data['purchaser_id']);  // Changed from user_id to purchaser_id
+		update_user_meta($enroll_data['purchaser_id'], 'moowoodle_moodle_course_enroll', $previous_enrolled_courses); 
+		do_action('moowoodle_after_enrol_moodle_user', $enrolments, $enroll_data['purchaser_id']);  
 	}
 	
 	/**
@@ -485,14 +557,21 @@ class Enrollment {
 	 * Update group item quantity
 	 */
 	private static function update_group_quantity($group_item_id, $current_quantity, $wpdb) {
+		$new_quantity = (int)$current_quantity - 1;
+		$status = ($new_quantity <= 0) ? 'enrolled' : 'unenrolled';
+	
 		$wpdb->update(
 			"{$wpdb->prefix}moowoodle_group_items",
-			['available_quantity' => (int)$current_quantity - 1],
+			[
+				'available_quantity' => max(0, $new_quantity),
+				'status' => $status
+			],
 			['id' => $group_item_id],
-			['%d'],
+			['%d', '%s'],
 			['%d']
 		);
 	}
+	
 	
 	/**
 	 * Standardized response handler

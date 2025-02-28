@@ -5091,6 +5091,7 @@ const MyGroups = () => {
   }, []);
   const fetchGroups = async () => {
     try {
+      setLoading(true); // Show loading before fetching
       const response = await axios__WEBPACK_IMPORTED_MODULE_4__["default"].post((0,_services_apiService__WEBPACK_IMPORTED_MODULE_1__.getApiLink)("get-user-groups"), {}, {
         headers: {
           "X-WP-Nonce": appLocalizer.nonce
@@ -5111,6 +5112,11 @@ const MyGroups = () => {
       order_id: group.order_id
     });
   };
+  const handleBack = () => {
+    setSelectedItem(null); // Clear selected item
+    setGroups([]); // Reset groups to trigger re-render
+    fetchGroups(); // Reload groups data
+  };
   if (loading) return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("p", {
     children: "Loading groups..."
   });
@@ -5122,7 +5128,7 @@ const MyGroups = () => {
   if (selectedItem) {
     return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)(_ViewEnroll_ViewEnroll__WEBPACK_IMPORTED_MODULE_2__["default"], {
       item: selectedItem,
-      onBack: () => setSelectedItem(null)
+      onBack: handleBack
     });
   }
   return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("div", {
@@ -5162,8 +5168,7 @@ const MyGroups = () => {
               children: item.status
             }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("td", {
               children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("button", {
-                onClick: () => handleViewEnroll(group, item) // Pass group and item
-                ,
+                onClick: () => handleViewEnroll(group, item),
                 className: "view-enroll-btn",
                 children: "View Enroll"
               })
@@ -5206,7 +5211,9 @@ const ViewEnroll = ({
 }) => {
   const [enrolledUsers, setEnrolledUsers] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [loading, setLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(true);
+  const [submitting, setSubmitting] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
   const [error, setError] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)("");
+  const [success, setSuccess] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(""); // New state for success messages
   const [isModalOpen, setIsModalOpen] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
   const [newUser, setNewUser] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
     name: "",
@@ -5217,25 +5224,33 @@ const ViewEnroll = ({
   }, [item.id]);
   const fetchEnrollments = async () => {
     try {
+      setLoading(true);
       const response = await axios__WEBPACK_IMPORTED_MODULE_3__["default"].post((0,_services_apiService__WEBPACK_IMPORTED_MODULE_1__.getApiLink)("get-user-enrollments-by-group-item-id"), {
         group_item_id: item.id
-      },
-      // Use item.id
-      {
+      }, {
         headers: {
           "X-WP-Nonce": appLocalizer.nonce
         }
       });
       setEnrolledUsers(response.data.enrollments);
-      setLoading(false);
     } catch (error) {
-      console.error("Error fetching enrollments:", error);
       setError("Failed to load enrollments.");
+    } finally {
       setLoading(false);
     }
   };
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
+  const openModal = () => {
+    setError("");
+    setSuccess(""); // Clear previous messages when opening modal
+    setIsModalOpen(true);
+  };
+  const closeModal = () => {
+    setNewUser({
+      name: "",
+      email: ""
+    });
+    setIsModalOpen(false);
+  };
   const handleChange = e => {
     setNewUser({
       ...newUser,
@@ -5244,6 +5259,10 @@ const ViewEnroll = ({
   };
   const handleSubmit = async e => {
     e.preventDefault();
+    setSubmitting(true);
+    setError("");
+    setSuccess(""); // Clear previous messages
+
     try {
       const response = await axios__WEBPACK_IMPORTED_MODULE_3__["default"].post((0,_services_apiService__WEBPACK_IMPORTED_MODULE_1__.getApiLink)("enroll-user"), {
         group_item_id: item.id,
@@ -5256,15 +5275,17 @@ const ViewEnroll = ({
           "X-WP-Nonce": appLocalizer.nonce
         }
       });
-      await fetchEnrollments();
-      setNewUser({
-        name: "",
-        email: ""
-      });
-      closeModal();
+      if (response.data.success) {
+        setSuccess(response.data.message || "User enrolled successfully.");
+        await fetchEnrollments();
+        setTimeout(closeModal, 2000); // Auto-close modal after 2 seconds
+      } else {
+        setError(response.data.message || "Enrollment failed.");
+      }
     } catch (error) {
-      console.error("Error enrolling user:", error);
       setError("Failed to enroll user.");
+    } finally {
+      setSubmitting(false);
     }
   };
   return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
@@ -5273,11 +5294,10 @@ const ViewEnroll = ({
       onClick: onBack,
       className: "back-btn",
       children: "\u2190 Back to Groups"
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("h3", {
-      children: ["Enrollments for Course ID: ", item.course_id]
-    }), " ", loading ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("p", {
+    }), loading ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("p", {
       children: "Loading enrollments..."
     }) : error ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("p", {
+      className: "error-message",
       children: error
     }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.Fragment, {
       children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
@@ -5333,7 +5353,8 @@ const ViewEnroll = ({
             name: "name",
             value: newUser.name,
             onChange: handleChange,
-            required: true
+            required: true,
+            disabled: submitting
           }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
             children: "Email"
           }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
@@ -5341,17 +5362,26 @@ const ViewEnroll = ({
             name: "email",
             value: newUser.email,
             onChange: handleChange,
-            required: true
+            required: true,
+            disabled: submitting
+          }), error && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("p", {
+            className: "error-message",
+            children: error
+          }), success && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("p", {
+            className: "success-message",
+            children: success
           }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
             className: "modal-actions",
             children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
               type: "submit",
               className: "submit-btn",
-              children: "Add"
+              disabled: submitting,
+              children: submitting ? "Adding..." : "Add"
             }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
               type: "button",
               className: "cancel-btn",
               onClick: closeModal,
+              disabled: submitting,
               children: "Cancel"
             })]
           })]

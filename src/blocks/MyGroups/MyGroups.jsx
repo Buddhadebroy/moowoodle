@@ -15,6 +15,7 @@ const MyGroups = () => {
 
   const fetchGroups = async () => {
     try {
+      setLoading(true); // Show loading before fetching
       const response = await axios.post(getApiLink("get-user-groups"), {}, {
         headers: { "X-WP-Nonce": appLocalizer.nonce },
       });
@@ -32,8 +33,14 @@ const MyGroups = () => {
     // Combine item data with order_id from the parent group
     setSelectedItem({
       ...item,
-      order_id: group.order_id
+      order_id: group.order_id,
     });
+  };
+
+  const handleBack = () => {
+    setSelectedItem(null); // Clear selected item
+    setGroups([]); // Reset groups to trigger re-render
+    fetchGroups(); // Reload groups data
   };
 
   if (loading) return <p>Loading groups...</p>;
@@ -41,7 +48,7 @@ const MyGroups = () => {
 
   // If an item is selected, render the ViewEnroll component with full item data including order_id
   if (selectedItem) {
-    return <ViewEnroll item={selectedItem} onBack={() => setSelectedItem(null)} />;
+    return <ViewEnroll item={selectedItem} onBack={handleBack} />;
   }
 
   return (
@@ -73,7 +80,7 @@ const MyGroups = () => {
                     <td>{item.status}</td>
                     <td>
                       <button
-                        onClick={() => handleViewEnroll(group, item)} // Pass group and item
+                        onClick={() => handleViewEnroll(group, item)}
                         className="view-enroll-btn"
                       >
                         View Enroll
