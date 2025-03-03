@@ -133,7 +133,6 @@ class MooWoodle {
         $this->container[ 'external_service' ] = new ExternalService();
 		$this->container[ 'enrollment' ] = new Enrollment();
 		$this->container[ 'frontend' ] = new FrontEnd();
-        $this->container[ 'ajax' ] = new Ajax();
 
         new EndPoint();
 
