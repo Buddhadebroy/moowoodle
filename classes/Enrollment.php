@@ -33,49 +33,45 @@ class Enrollment {
 				$name  = $order->get_meta('_wc_billing/MooWoodle/full_name', true);
 				$email = $order->get_meta('_wc_billing/MooWoodle/email_address', true);
 
-				// Validate required fields
-				if (empty($name) || empty($email)) {
-					return rest_ensure_response([
+				if ( empty( $name ) || empty( $email )) {
+					return rest_ensure_response( [
 						'success' => false,
 						'message' => __('Name and Email are required.', 'moowoodle'),
-					]);
+					] );
 				}
 
-				// Validate email format
-				if (!is_email($email)) {
-					return rest_ensure_response([
+				if ( ! is_email( $email ) ) {
+					return rest_ensure_response( [
 						'success' => false,
 						'message' => __('Invalid email format.', 'moowoodle'),
-					]);
+					] );
 				}
 
-				// Check if user exists by email, otherwise create a new user
-				$user = get_user_by('email', $email);
-				if (!$user) {
+				$user = get_user_by( 'email', $email );
+				if ( ! $user ) {
 					$password = wp_generate_password(12, false);
-					$user_id = wp_create_user($name, $password, $email);
+					$user_id = wp_create_user( $name, $password, $email );
 
-					if (is_wp_error($user_id)) {
+					if ( is_wp_error( $user_id ) ) {
 						return rest_ensure_response([
 							'success' => false,
 							'message' => __('Failed to create user: ', 'moowoodle') . $user_id->get_error_message(),
 						]);
 					}
 
-					// Assign 'customer' role to new user
 					wp_update_user(['ID' => $user_id, 'role' => 'customer']);
 				} else {
 					$user_id = $user->ID;
 				}
 
-				// Extract data from WooCommerce item object
-				$product_id = $item->get_product_id();  // Get product ID
-				$quantity   = $item->get_quantity();    // Get purchased quantity
-				$course_id  = get_post_meta($product_id, 'moodle_course_id', true); // Get associated Moodle course ID
+				
+				$product_id = $item->get_product_id();  
+				$quantity   = $item->get_quantity();    
+				$course_id  = get_post_meta( $product_id, 'moodle_course_id', true );
 
-				// Prepare structured data array
-				$data = [
-					'order_id'  => $order->get_id(),   // Get order ID
+				
+				$enroll_data = [
+					'order_id'  => $order->get_id(),
 					'user_id'   => $user_id,
 					'user_name' => $name,
 					'product_id'=> $product_id,
@@ -83,7 +79,7 @@ class Enrollment {
 					'course_id' => $course_id,
 				];
 
-				$this->create_customer_default_group_on_order( $data );
+				$this->create_customer_default_group_on_order( $enroll_data );
 
 			}else if ( $item->get_quantity() == 1 ) {
 
@@ -99,11 +95,11 @@ class Enrollment {
 				$this->process_enrollment( $enroll_data );
 
 			} else if ( $item->get_quantity() > 1 ) {
-				$product_id = $item->get_product_id();  // Get product ID
-				$quantity   = $item->get_quantity();    // Get purchased quantity
-				$course_id  = get_post_meta($product_id, 'moodle_course_id', true); // Get associated Moodle course ID
+				$product_id = $item->get_product_id(); 
+				$quantity   = $item->get_quantity();   
+				$course_id  = get_post_meta($product_id, 'moodle_course_id', true); 
 
-				$data = [
+				$enroll_data = [
 					'order_id'  => $order->get_id(),   // Get order ID
 					'user_id'   => $order->get_customer_id(),
 					'user_name' => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
@@ -111,25 +107,24 @@ class Enrollment {
 					'quantity'  => $quantity,
 					'course_id' => $course_id,
 				];
-				$this->create_customer_default_group_on_order( $data );
+				$this->create_customer_default_group_on_order( $enroll_data );
 			}
 		}
 			
 	}
-	function create_customer_default_group_on_order( $data ) {
+	
+	function create_customer_default_group_on_order( $enroll_data ) {
 		global $wpdb;
 	
-		// Extract values from the data array
-		$order_id   = $data['order_id'];
-		$user_id    = $data['user_id'];
-		$user_name  = $data['user_name'];
-		$product_id = $data['product_id'];
-		$quantity   = $data['quantity'];
-		$course_id  = $data['course_id'];
+		$order_id   = $enroll_data['order_id'];
+		$user_id    = $enroll_data['user_id'];
+		$user_name  = $enroll_data['user_name'];
+		$product_id = $enroll_data['product_id'];
+		$quantity   = $enroll_data['quantity'];
+		$course_id  = $enroll_data['course_id'];
 	
 		$default_group_name = 'Classroom';
 	
-		// Check if the customer already has a default group
 		$customer_group = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT id FROM " . $wpdb->prefix . "moowoodle_group WHERE user_id = %d AND name = %s", 
@@ -137,9 +132,8 @@ class Enrollment {
 				$default_group_name
 			)
 		);
-	
-		// If no default group exists for this customer, create a new one
-		if (is_null($customer_group)) {
+
+		if ( is_null( $customer_group ) ) {
 			$wpdb->insert(
 				$wpdb->prefix . 'moowoodle_group',
 				array(
@@ -150,15 +144,12 @@ class Enrollment {
 				),
 				array('%s', '%d', '%d', '%s')
 			);
-	
-			// Get the ID of the newly created default group
+
 			$group_id = $wpdb->insert_id;
 		} else {
-			// If the group exists, use its ID
 			$group_id = $customer_group->id;
 		}
 	
-		// Insert the product into the group items table
 		$wpdb->insert(
 			$wpdb->prefix . 'moowoodle_group_items',
 			array(
@@ -184,28 +175,24 @@ class Enrollment {
 	 */
 	public function process_enrollment( $enroll_data ) {
 
-		if (empty($enroll_data) || !is_array($enroll_data)) {
+		if ( empty( $enroll_data ) || !is_array( $enroll_data ) ) {
 			return;
 		}
 
 		try {
-			// Get Moodle user ID
-			$moodle_user_id = $this->get_moodle_user_id( $enroll_data['purchaser_id'] );
+			$moodle_user_id = $this->get_moodle_user_id( $enroll_data[ 'purchaser_id' ] );
 			
-			if (!$moodle_user_id) {
+			if ( !$moodle_user_id ) {
 				return;
 			}
-			// Add Moodle user ID to enrollment data
-			$enroll_data['moodle_user_id'] = $moodle_user_id;
+			$enroll_data[ 'moodle_user_id' ] = $moodle_user_id;
 
 			$enroll_data [ 'role_id' ]= apply_filters( 'moowoodle_enrolled_user_role_id', 5 );
 
-			// Process enrollment using static method
 			return self::enroll_user( $enroll_data );
 
 
 		} catch (Exception $e) {
-			// Log the error or handle it appropriately
 			error_log("Enrollment processing failed: " . $e->getMessage());
 		}
 	}
@@ -423,19 +410,18 @@ class Enrollment {
 	public static function enroll_user( $enroll_data ) {
 
 		global $wpdb;
-		// Validate and fetch previous enrollments
-		$previous_enrolled_courses = self::get_previous_enrollments($enroll_data['purchaser_id']);
+
+		$previous_enrolled_courses = self::get_previous_enrollments( $enroll_data[ 'purchaser_id' ] );
 		
-		// Check if already enrolled
-		if (in_array($enroll_data['course_id'], $previous_enrolled_courses)) {
+		if ( in_array( $enroll_data['course_id'], $previous_enrolled_courses ) ) {
 			return self::send_response(false, __('User is already enrolled in this course.', 'moowoodle'));
 		}
 	
 		try {
-			if ($enroll_data['group_item_id'] == 0) {
-				return self::handle_individual_enrollment($enroll_data, $previous_enrolled_courses);
+			if ( $enroll_data[ 'group_item_id' ] == 0 ) {
+				return self::handle_individual_enrollment( $enroll_data, $previous_enrolled_courses );
 			} else {
-				return self::handle_group_enrollment($enroll_data, $previous_enrolled_courses, $wpdb);
+				return self::handle_group_enrollment( $enroll_data, $previous_enrolled_courses, $wpdb );
 			}
 		} catch (Exception $e) {
 			return self::send_response(false, __('Enrollment processing failed: ', 'moowoodle') . $e->getMessage());
@@ -445,7 +431,7 @@ class Enrollment {
 	/**
 	 * Get previous enrollments for a user
 	 */
-	private static function get_previous_enrollments($purchaser_id) {
+	private static function get_previous_enrollments( $purchaser_id ) {
 		$courses = get_user_meta($purchaser_id, 'moowoodle_moodle_course_enroll', true);
 		return is_array($courses) ? $courses : [];
 	}
@@ -453,7 +439,7 @@ class Enrollment {
 	/**
 	 * Handle individual enrollment
 	 */
-	private static function handle_individual_enrollment($enroll_data, $previous_enrolled_courses) {
+	private static function handle_individual_enrollment( $enroll_data, $previous_enrolled_courses) {
 
 		$enrolments = [[
 			'roleid'  => $enroll_data['role_id'],
@@ -464,12 +450,12 @@ class Enrollment {
 
 		$response = MooWoodle()->external_service->do_request('enrol_users', ['enrolments' => $enrolments]);
 
-		if (!$response || isset($response['error'])) {
+		if ( ! $response || isset($response['error'] ) ) {
 			return self::send_response(false, __('Moodle enrollment failed.', 'moowoodle'));
 		}
 	
-		$user = get_userdata($enroll_data['purchaser_id']);
-		self::update_enrollment_data($enroll_data, $user, $previous_enrolled_courses, $enrolments);
+		$user = get_userdata( $enroll_data[ 'purchaser_id' ] );
+		self::update_enrollment_data( $enroll_data, $user, $previous_enrolled_courses, $enrolments );
 
 		return self::send_response(true, __('User successfully enrolled.', 'moowoodle'));
 	}
@@ -477,7 +463,7 @@ class Enrollment {
 	/**
 	 * Handle group enrollment
 	 */
-	private static function handle_group_enrollment($enroll_data, $previous_enrolled_courses, $wpdb) {
+	private static function handle_group_enrollment( $enroll_data, $previous_enrolled_courses, $wpdb ) {
 
 		// Fetch and validate group item
 		$group_item_data = $wpdb->get_row(
@@ -490,7 +476,7 @@ class Enrollment {
 			ARRAY_A
 		);
 	
-		if (!$group_item_data || (int)$group_item_data['available_quantity'] <= 0) {
+		if ( !$group_item_data || (int)$group_item_data['available_quantity'] <= 0 ) {
 			return self::send_response(
 				false,
 				$group_item_data ? 
@@ -508,16 +494,15 @@ class Enrollment {
 		]];
 
 		$response = MooWoodle()->external_service->do_request('enrol_users', ['enrolments' => $enrolments]);
-		if (!$response || isset($response['error'])) {
+		if ( !$response || isset($response['error'])) {
 			return self::send_response(false, __('Moodle enrollment failed.', 'moowoodle'));
 		}
 	
-		// Update group quantity and enrollment data
-		$user = get_userdata($enroll_data['purchaser_id']);
-		$order_id = self::get_group_order_id($enroll_data['group_id'], $wpdb);
+		$user = get_userdata( $enroll_data['purchaser_id'] );
+		$order_id = self::get_group_order_id( $enroll_data['group_id'], $wpdb);
 		
-		self::update_group_quantity($enroll_data['group_item_id'], $group_item_data['available_quantity'], $wpdb);
-		self::update_enrollment_data($enroll_data, $user, $previous_enrolled_courses, $enrolments, $order_id);
+		self::update_group_quantity( $enroll_data['group_item_id'], $group_item_data['available_quantity'], $wpdb);
+		self::update_enrollment_data( $enroll_data, $user, $previous_enrolled_courses, $enrolments, $order_id );
 	
 		return self::send_response(true, __('User successfully enrolled.', 'moowoodle'));
 	}
@@ -525,9 +510,9 @@ class Enrollment {
 	/**
 	 * Update enrollment data and user meta
 	 */
-	private static function update_enrollment_data($enroll_data, $user, &$previous_enrolled_courses, $enrolments, $order_id = null) {
+	private static function update_enrollment_data( $enroll_data, $user, &$previous_enrolled_courses, $enrolments, $order_id = null ) {
 		self::add_enrollment([
-			'user_id'       => $enroll_data['purchaser_id'],  // Changed from user_id to purchaser_id
+			'user_id'       => $enroll_data['purchaser_id'],
 			'user_email'    => $user->user_email,
 			'course_id'     => $enroll_data['course_id'],
 			'order_id'      => $order_id ?? $enroll_data['order_id'],
@@ -537,14 +522,14 @@ class Enrollment {
 		]);
 	
 		$previous_enrolled_courses[] = $enroll_data['course_id'];
-		update_user_meta($enroll_data['purchaser_id'], 'moowoodle_moodle_course_enroll', $previous_enrolled_courses); 
+		update_user_meta( $enroll_data['purchaser_id'], 'moowoodle_moodle_course_enroll', $previous_enrolled_courses ) ; 
 		do_action('moowoodle_after_enrol_moodle_user', $enrolments, $enroll_data['purchaser_id']);  
 	}
 	
 	/**
 	 * Get order ID for group enrollment
 	 */
-	private static function get_group_order_id($group_id, $wpdb) {
+	private static function get_group_order_id( $group_id, $wpdb ) {
 		return $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT order_id FROM {$wpdb->prefix}moowoodle_group WHERE id = %d",
@@ -556,7 +541,7 @@ class Enrollment {
 	/**
 	 * Update group item quantity
 	 */
-	private static function update_group_quantity($group_item_id, $current_quantity, $wpdb) {
+	private static function update_group_quantity( $group_item_id, $current_quantity, $wpdb ) {
 		$new_quantity = (int)$current_quantity - 1;
 		$status = ($new_quantity <= 0) ? 'enrolled' : 'unenrolled';
 	
@@ -576,7 +561,7 @@ class Enrollment {
 	/**
 	 * Standardized response handler
 	 */
-	private static function send_response($success, $message) {
+	private static function send_response( $success, $message ) {
 		return [
 			'success' => $success,
 			'message' => $message
