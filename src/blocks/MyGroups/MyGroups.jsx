@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { getApiLink } from "../../services/apiService";
 import ViewEnroll from "../ViewEnroll/ViewEnroll";
+import "./mygroups.scss";
 
 const MyGroups = () => {
   const [groups, setGroups] = useState([]);
@@ -53,35 +54,34 @@ const MyGroups = () => {
 
   return (
     <div>
-      <h3>My Groups</h3>
 
       {groups.length > 0 ? (
         groups.map((group) => (
           <div key={group.group_id}>
-            <h4>{group.group_name}</h4>
-            <table>
+            <h2>{group.group_name}</h2>
+            <table className="moowoodle-table woocommerce-MyAccount-orders woocommerce-orders-table shop_table shop_table_responsive my_account_orders account-orders-table">
               <thead>
-                <tr>
-                  <th>Course ID</th>
-                  <th>Product ID</th>
-                  <th>Total Quantity</th>
-                  <th>Available Quantity</th>
-                  <th>Status</th>
-                  <th>Enroll User</th>
+                <tr className="woocommerce-orders-table__row">
+                  <th className="woocommerce-orders-table__header">Course ID</th>
+                  <th className="woocommerce-orders-table__header">Product ID</th>
+                  <th className="woocommerce-orders-table__header">Total Quantity</th>
+                  <th className="woocommerce-orders-table__header">Available Quantity</th>
+                  <th className="woocommerce-orders-table__header">Status</th>
+                  <th className="woocommerce-orders-table__header">Enroll User</th>
                 </tr>
               </thead>
               <tbody>
                 {group.items.map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.course_id}</td>
-                    <td>{item.product_id}</td>
-                    <td>{item.total_quantity}</td>
-                    <td>{item.available_quantity}</td>
-                    <td>{item.status}</td>
+                  <tr className="woocommerce-orders-table__row" key={item.id}>
+                    <td className="woocommerce-orders-table__cell">{item.course_id}</td>
+                    <td className="woocommerce-orders-table__cell">{item.product_id}</td>
+                    <td className="woocommerce-orders-table__cell">{item.total_quantity}</td>
+                    <td className="woocommerce-orders-table__cell">{item.available_quantity}</td>
+                    <td className="woocommerce-orders-table__cell">{item.status}</td>
                     <td>
                       <button
                         onClick={() => handleViewEnroll(group, item)}
-                        className="view-enroll-btn"
+                        className="woocommerce-button wp-element-button button view"
                       >
                         View Enroll
                       </button>
@@ -93,7 +93,9 @@ const MyGroups = () => {
           </div>
         ))
       ) : (
-        <p>You have no groups yet.</p>
+        <div className="woocommerce-info">
+          You have no groups yet.
+        </div>
       )}
     </div>
   );

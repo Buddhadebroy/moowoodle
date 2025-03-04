@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { getApiLink } from "../../services/apiService";
+import "../MyGroups/mygroups.scss";
 
 const ViewEnroll = ({ item, onBack }) => {
   const [enrolledUsers, setEnrolledUsers] = useState([]);
@@ -81,30 +82,31 @@ const ViewEnroll = ({ item, onBack }) => {
 
   return (
     <div className="enroll-container">
-      <button onClick={onBack} className="back-btn">← Back to Groups</button>
 
       {loading ? <p>Loading enrollments...</p> : error ? <p className="error-message">{error}</p> : (
         <>
-          <button onClick={openModal} className="add-user-btn">
-            + Add User
-          </button>
-
+          <div class="button-wrapper">
+              <button onClick={onBack} className="woocommerce-Button button wp-element-button">← Back to Groups</button>
+              <button onClick={openModal} className="woocommerce-Button button wp-element-button">
+                + Add User
+              </button>
+          </div>
           <div className="table-container">
-            <table>
+            <table className="moowoodle-table woocommerce-MyAccount-orders woocommerce-orders-table shop_table shop_table_responsive my_account_orders account-orders-table">
               <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Enrollment Date</th>
+                <tr className="woocommerce-orders-table__row">
+                  <th className="woocommerce-orders-table__header">Name</th>
+                  <th className="woocommerce-orders-table__header">Email</th>
+                  <th className="woocommerce-orders-table__header">Enrollment Date</th>
                 </tr>
               </thead>
               <tbody>
                 {enrolledUsers.length > 0 ? (
                   enrolledUsers.map((user, index) => (
-                    <tr key={index}>
-                      <td>{user.name}</td>
-                      <td>{user.email}</td>
-                      <td>{user.date}</td>
+                    <tr key={index} className="woocommerce-orders-table__row">
+                      <td className="woocommerce-orders-table__cell">{user.name}</td>
+                      <td className="woocommerce-orders-table__cell">{user.email}</td>
+                      <td className="woocommerce-orders-table__cell">{user.date}</td>
                     </tr>
                   ))
                 ) : (
@@ -122,23 +124,27 @@ const ViewEnroll = ({ item, onBack }) => {
         <>
           <div className="modal-overlay" onClick={closeModal}></div>
           <div className="modal-content">
-            <h2>Add New User</h2>
             <form onSubmit={handleSubmit}>
-              <label>Name</label>
-              <input type="text" name="name" value={newUser.name} onChange={handleChange} required disabled={submitting} />
-
-              <label>Email</label>
-              <input type="email" name="email" value={newUser.email} onChange={handleChange} required disabled={submitting} />
-
+              <fieldset>
+                <legend>Add New User</legend>
+                  <p className="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label>Name</label>
+                    <input className="woocommerce-Input woocommerce-Input--text input-text" type="text" name="name" value={newUser.name} onChange={handleChange} required disabled={submitting} />
+                  </p>
+                  <p className="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label>Email</label>
+                    <input className="woocommerce-Input woocommerce-Input--text input-text" type="email" name="email" value={newUser.email} onChange={handleChange} required disabled={submitting} />
+                  </p>
+              </fieldset>
               {/* Show success or error messages */}
               {error && <p className="error-message">{error}</p>}
               {success && <p className="success-message">{success}</p>}
 
               <div className="modal-actions">
-                <button type="submit" className="submit-btn" disabled={submitting}>
+                <button type="submit" className="woocommerce-Button button wp-element-button" disabled={submitting}>
                   {submitting ? "Adding..." : "Add"}
                 </button>
-                <button type="button" className="cancel-btn" onClick={closeModal} disabled={submitting}>
+                <button type="button" className="woocommerce-Button button wp-element-button" onClick={closeModal} disabled={submitting}>
                   Cancel
                 </button>
               </div>

@@ -109,6 +109,11 @@ class EndPoint {
 			time(),
 			true
 		);
+		
+		wp_enqueue_style(
+			'moowoodle-myaccount-mycourse-style',
+			MOOWOODLE_PLUGIN_URL . 'build/blocks/MyCourses/index.css'
+		);
 
 		wp_localize_script(
 			'moowoodle-myaccount-mycourse-script',
@@ -136,6 +141,10 @@ class EndPoint {
 			['wp-element', 'wp-i18n', 'react-jsx-runtime'],
 			time(),
 			true
+		);
+		wp_enqueue_style(
+			'moowoodle-myaccount-mycourse-style',
+			MOOWOODLE_PLUGIN_URL . 'build/blocks/MyGroups/index.css'
 		);
 
 		wp_localize_script(
