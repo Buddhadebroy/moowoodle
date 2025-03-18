@@ -24,18 +24,20 @@ const Settings = () => {
 
     // get current browser location
     const location = new URLSearchParams( useLocation().hash );
-    
     // Render the dinamic form.
     const getForm = (currentTab) => {
-
         // get the setting context
         const { setting, settingName, setSetting } = useSetting();
         const settingModal = getSettingById( settingsArray, currentTab );
-
+        console.log('appLocalizer:', appLocalizer);
+        console.log('appLocalizer.settings_databases_value:', appLocalizer.settings_databases_value);
+        console.log('currentTab:', currentTab);
+        console.log('Value for currentTab:', appLocalizer.settings_databases_value?.[currentTab]);
+        
         if ( settingName != currentTab ) {
             setSetting( currentTab, appLocalizer.settings_databases_value[currentTab] || {} );
         }
-
+        
         useEffect(() => {
             appLocalizer.settings_databases_value[settingName] = setting;
         }, [setting]);
@@ -60,11 +62,11 @@ const Settings = () => {
         <>
             <SettingProvider>
                 <Tabs
-                    tabData={ settingsArray }
-                    currentTab={ location.get( 'subtab' ) }
+                    tabData={settingsArray}
+                    currentTab={location.get('sub-tab')}
                     getForm={getForm}
-                    BannerSection = { BannerSection }
-                    prepareUrl={(subTab) => `?page=plugin-elements#&tab=settings&subtab=${subTab}` }
+                    BannerSection={!appLocalizer.khali_dabba && BannerSection}
+                    prepareUrl={(subTab) => `?page=moowoodle#&tab=settings&sub-tab=${subTab}`}
                 />
             </SettingProvider>
         </>

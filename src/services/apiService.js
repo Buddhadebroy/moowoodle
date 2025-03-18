@@ -43,8 +43,9 @@ const sendApiResponse = async ( url, data, headers = {} ) => {
  * @returns 
  */
 const getApiLink = ( endpoint, namespace = null, rootUrl = null ) => {
-    rootUrl = rootUrl || appLocalizer.apiurl;
+    rootUrl = rootUrl || appLocalizer.apiUrl;
     namespace = namespace || appLocalizer.restUrl;
+    
     return `${rootUrl}/${namespace}/${endpoint}`;
 }
 
