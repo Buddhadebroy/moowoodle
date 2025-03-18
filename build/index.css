@@ -4423,6 +4423,216 @@ div.subscriber-img {
     left: 100%;
   }
 }
+/*!************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[4].use[1]!./node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[4].use[2]!./node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[4].use[3]!./src/components/Courses/courses.scss ***!
+  \************************************************************************************************************************************************************************************************************************************************************/
+.course-container-wrapper .moowoodle-course-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+.course-container-wrapper .moowoodle-course-actions button {
+  box-shadow: 0 0 1rem rgba(0, 0, 0, 0.025);
+}
+.course-container-wrapper .moowoodle-course-actions button:first-child {
+  background-color: #65438f;
+}
+.course-container-wrapper .moowoodle-course-actions button:last-child {
+  background-color: rgba(101, 67, 143, 0.6);
+  color: #fff;
+}
+.course-container-wrapper .moowoodle-course-actions button i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.course-container-wrapper .rdt_Table a {
+  color: rgba(0, 0, 0, 0.87);
+}
+.course-container-wrapper .rdt_Table .rdt_TableHead .rdt_TableHeadRow .rdt_TableCol:nth-child(2) {
+  min-width: 14rem !important;
+}
+.course-container-wrapper .rdt_Table .rdt_TableHead .rdt_TableHeadRow .rdt_TableCol:nth-child(5) {
+  min-width: 15rem !important;
+}
+.course-container-wrapper .rdt_Table .rdt_TableHead .rdt_TableHeadRow .rdt_TableCol:nth-child(6) {
+  min-width: 12rem !important;
+}
+.course-container-wrapper .rdt_Table .rdt_TableRow {
+  align-items: start;
+}
+.course-container-wrapper .rdt_Table .rdt_TableRow .action-section {
+  padding: 0 !important;
+}
+.course-container-wrapper .rdt_Table .rdt_TableRow .rdt_TableCell:first-child {
+  margin-top: 1rem;
+}
+.course-container-wrapper .rdt_Table .rdt_TableRow .rdt_TableCell:nth-child(2) {
+  min-width: 14rem !important;
+}
+.course-container-wrapper .rdt_Table .rdt_TableRow .rdt_TableCell:nth-child(5) {
+  min-width: 15rem !important;
+}
+.course-container-wrapper .rdt_Table .rdt_TableRow .rdt_TableCell:nth-child(6) {
+  min-width: 12rem !important;
+}
+.course-container-wrapper .rdt_TableCol .rdt_TableCol_Sortable > span {
+  font-size: 0.75rem;
+  padding: 0.189rem;
+}
+.course-container-wrapper .rdt_Pagination .sc-lnsjTu.epZUJV > svg {
+  display: none;
+}
+
+@media only screen and (max-width: 85.365rem) {
+  .rdt_Table .rdt_TableBody .rdt_TableRow .rdt_TableCell:nth-child(1), .rdt_Table .rdt_TableBody .rdt_TableRow .rdt_TableCell:nth-child(2), .rdt_Table .rdt_TableBody .rdt_TableRow .rdt_TableCell:nth-child(3) {
+    height: 4.25rem !important;
+  }
+}
+.filter-wrapper .wrap-bulk-all-date {
+  max-width: 100% !important;
+  gap: 0.75rem;
+}
+.filter-wrapper .wrap-bulk-all-date > div {
+  max-width: 9.45rem;
+}
+.filter-wrapper .wrap-bulk-all-date .searchCourseField {
+  max-width: 12.6rem;
+  margin-left: auto;
+}
+.filter-wrapper .wrap-bulk-all-date .course-bulk-action {
+  max-width: 12.6rem;
+  flex-wrap: nowrap !important;
+  position: relative;
+}
+.filter-wrapper .wrap-bulk-all-date .course-bulk-action .admin-pro-tag {
+  right: -0.75rem;
+}
+
+@media only screen and (max-width: 41.895rem) {
+  .filter-wrapper .wrap-bulk-all-date .shortnameField {
+    margin: 0;
+  }
+  .filter-wrapper .wrap-bulk-all-date .course-bulk-action {
+    min-width: 12.6rem;
+  }
+  .filter-wrapper .wrap-bulk-all-date .course-bulk-action, .filter-wrapper .wrap-bulk-all-date > div,
+  .filter-wrapper .wrap-bulk-all-date .searchCourseField {
+    max-width: 100%;
+  }
+}
+.table-action-column {
+  position: relative;
+}
+.table-action-column .admin-pro-tag {
+  right: unset;
+}
+
+.table-row-custom .column-name {
+  position: relative;
+}
+/*!******************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[4].use[1]!./node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[4].use[2]!./node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[4].use[3]!./src/components/Enrollment/Enrollment.scss ***!
+  \******************************************************************************************************************************************************************************************************************************************************************/
+div.enrollment-img {
+  background-image: url(images/Enrollment-pc.2377bb22.png) !important;
+  background-repeat: no-repeat;
+  background-position: top left;
+  background-size: contain;
+  height: 100vh;
+}
+
+@media only screen and (max-width: 69.3rem) {
+  div.enrollment-img {
+    background-image: url(images/Enrollment-tab.76415bb9.png) !important;
+    background-repeat: no-repeat;
+    background-position: top;
+    background-size: contain;
+  }
+}
+@media only screen and (max-width: 34.65rem) {
+  div.enrollment-img {
+    background-image: url(images/Enrollment-phone.469f2413.png) !important;
+    background-repeat: no-repeat;
+    background-position: top;
+    background-size: contain;
+  }
+}
+.admin-enrollment-list .admin-page-title .download-btn-enrollment-list {
+  border-radius: 0.25rem;
+  background-color: #65438f;
+  padding: 0.5rem 1rem;
+}
+.admin-enrollment-list .admin-page-title .download-btn-enrollment-list a {
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+.admin-enrollment-list .admin-page-title .download-btn-enrollment-list a .dashicons-before::before {
+  padding: 0;
+}
+.admin-enrollment-list .selectable-table .wrap-bulk-all-date {
+  max-width: 100% !important;
+}
+.admin-enrollment-list .selectable-table .wrap-bulk-all-date > div select {
+  padding-top: 0.14rem !important;
+  padding-bottom: 0.14rem !important;
+}
+
+.rdt_TableRow {
+  align-items: start !important;
+}
+.rdt_TableRow .rdt_TableCell {
+  padding: 0.5rem !important;
+}
+.rdt_TableRow .action-section {
+  padding: 0 !important;
+}
+
+.table-row-custom .status-show-btn {
+  padding: 0.5rem 1rem;
+  background: #f0f0f0;
+  color: rgb(30, 30, 30);
+  width: 6.875rem;
+  border-radius: 0.25rem;
+}
+.table-row-custom .status-show-btn.unenroll {
+  background: rgba(227, 79, 71, 0.1254901961);
+  color: #e35047;
+}
+.table-row-custom .action-btn .unenroll {
+  color: #e35047 !important;
+}
+
+.filter-wrapper .wrap-bulk-all-date .search_student_field {
+  max-width: 12.6rem;
+  margin-left: auto;
+}
+
+@media only screen and (max-width: 63.438rem) {
+  .filter-wrapper .wrap-bulk-all-date .search_student_field {
+    margin: 0;
+  }
+}
+.selectable-table .admin-table-wrapper-filter {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  margin-bottom: 0.75rem;
+}
+.selectable-table .admin-table-wrapper-filter > div {
+  cursor: pointer;
+}
+.selectable-table .admin-table-wrapper-filter .type-count-active {
+  color: #522c81;
+}
 /*!**********************************************************************************************************************************************************************************************************************************************!*\
   !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[4].use[1]!./node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[4].use[2]!./node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[4].use[3]!./src/style/common.scss ***!
   \**********************************************************************************************************************************************************************************************************************************************/

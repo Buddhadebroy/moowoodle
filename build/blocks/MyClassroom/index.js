@@ -104,8 +104,8 @@ var compat = function compat(element) {
     return;
   }
 
-  var value = element.value,
-      parent = element.parent;
+  var value = element.value;
+  var parent = element.parent;
   var isImplicitRule = element.column === parent.column && element.line === parent.line;
 
   while (parent.type !== 'rule') {
@@ -472,12 +472,19 @@ var prefixer = function prefixer(element, index, children, callback) {
 };
 
 var defaultStylisPlugins = [prefixer];
+var getSourceMap;
 
-var createCache = function
-  /*: EmotionCache */
-createCache(options
-/*: Options */
-) {
+{
+  var sourceMapPattern = /\/\*#\ssourceMappingURL=data:application\/json;\S+\s+\*\//g;
+
+  getSourceMap = function getSourceMap(styles) {
+    var matches = styles.match(sourceMapPattern);
+    if (!matches) return;
+    return matches[matches.length - 1];
+  };
+}
+
+var createCache = function createCache(options) {
   var key = options.key;
 
   if (!key) {
@@ -490,9 +497,7 @@ createCache(options
     // note this very very intentionally targets all style elements regardless of the key to ensure
     // that creating a cache works inside of render of a React component
 
-    Array.prototype.forEach.call(ssrStyles, function (node
-    /*: HTMLStyleElement */
-    ) {
+    Array.prototype.forEach.call(ssrStyles, function (node) {
       // we want to only move elements which have a space in the data-emotion attribute value
       // because that indicates that it is an Emotion 11 server-side rendered style elements
       // while we will already ignore Emotion 11 client-side inserted styles because of the :not([data-s]) part in the selector
@@ -520,17 +525,13 @@ createCache(options
 
   var inserted = {};
   var container;
-  /* : Node */
-
   var nodesToHydrate = [];
 
   {
     container = options.container || document.head;
     Array.prototype.forEach.call( // this means we will ignore elements which don't have a space in them which
     // means that the style elements we're looking at are only Emotion 11 server-rendered style elements
-    document.querySelectorAll("style[data-emotion^=\"" + key + " \"]"), function (node
-    /*: HTMLStyleElement */
-    ) {
+    document.querySelectorAll("style[data-emotion^=\"" + key + " \"]"), function (node) {
       var attrib = node.getAttribute("data-emotion").split(' ');
 
       for (var i = 1; i < attrib.length; i++) {
@@ -542,13 +543,6 @@ createCache(options
   }
 
   var _insert;
-  /*: (
-  selector: string,
-  serialized: SerializedStyles,
-  sheet: StyleSheet,
-  shouldCache: boolean
-  ) => string | void */
-
 
   var omnipresentPlugins = [compat, removeLabel];
 
@@ -580,27 +574,19 @@ createCache(options
       return (0,stylis__WEBPACK_IMPORTED_MODULE_6__.serialize)((0,stylis__WEBPACK_IMPORTED_MODULE_8__.compile)(styles), serializer);
     };
 
-    _insert = function
-      /*: void */
-    insert(selector
-    /*: string */
-    , serialized
-    /*: SerializedStyles */
-    , sheet
-    /*: StyleSheet */
-    , shouldCache
-    /*: boolean */
-    ) {
+    _insert = function insert(selector, serialized, sheet, shouldCache) {
       currentSheet = sheet;
 
-      if (serialized.map !== undefined) {
-        currentSheet = {
-          insert: function insert(rule
-          /*: string */
-          ) {
-            sheet.insert(rule + serialized.map);
-          }
-        };
+      if (getSourceMap) {
+        var sourceMap = getSourceMap(serialized.styles);
+
+        if (sourceMap) {
+          currentSheet = {
+            insert: function insert(rule) {
+              sheet.insert(rule + sourceMap);
+            }
+          };
+        }
       }
 
       stylis(selector ? selector + "{" + serialized.styles + "}" : serialized.styles);
@@ -611,9 +597,7 @@ createCache(options
     };
   }
 
-  var cache
-  /*: EmotionCache */
-  = {
+  var cache = {
     key: key,
     sheet: new _emotion_sheet__WEBPACK_IMPORTED_MODULE_0__.StyleSheet({
       key: key,
@@ -1930,11 +1914,6 @@ function handleInterpolation(mergedProps, registered, interpolation) {
           }
 
           var styles = serializedStyles.styles + ";";
-
-          if (serializedStyles.map !== undefined) {
-            styles += serializedStyles.map;
-          }
-
           return styles;
         }
 
@@ -2041,14 +2020,8 @@ function createStringFromObject(mergedProps, registered, obj) {
   return string;
 }
 
-var labelPattern = /label:\s*([^\s;{]+)\s*(;|$)/g;
-var sourceMapPattern;
-
-{
-  sourceMapPattern = /\/\*#\ssourceMappingURL=data:application\/json;\S+\s+\*\//g;
-} // this is the cursor for keyframes
+var labelPattern = /label:\s*([^\s;{]+)\s*(;|$)/g; // this is the cursor for keyframes
 // keyframes are stored on the SerializedStyles object as a linked list
-
 
 var cursor;
 function serializeStyles(args, registered, mergedProps) {
@@ -2087,15 +2060,6 @@ function serializeStyles(args, registered, mergedProps) {
 
       styles += templateStringsArr[i];
     }
-  }
-
-  var sourceMap;
-
-  {
-    styles = styles.replace(sourceMapPattern, function (match) {
-      sourceMap = match;
-      return '';
-    });
   } // using a global regex with .exec is stateful so lastIndex has to be reset each time
 
 
@@ -2113,7 +2077,6 @@ function serializeStyles(args, registered, mergedProps) {
     var devStyles = {
       name: name,
       styles: styles,
-      map: sourceMap,
       next: cursor,
       toString: function toString() {
         return "You have tried to stringify object returned from `css` function. It isn't supposed to be used directly (e.g. as value of the `className` prop), but rather handed to emotion so it can handle it (e.g. as value of `css` prop).";
@@ -8218,8 +8181,8 @@ function _objectWithoutProperties(e, t) {
     r,
     i = (0,_objectWithoutPropertiesLoose_js__WEBPACK_IMPORTED_MODULE_0__["default"])(e, t);
   if (Object.getOwnPropertySymbols) {
-    var s = Object.getOwnPropertySymbols(e);
-    for (r = 0; r < s.length; r++) o = s[r], t.includes(o) || {}.propertyIsEnumerable.call(e, o) && (i[o] = e[o]);
+    var n = Object.getOwnPropertySymbols(e);
+    for (r = 0; r < n.length; r++) o = n[r], -1 === t.indexOf(o) && {}.propertyIsEnumerable.call(e, o) && (i[o] = e[o]);
   }
   return i;
 }
@@ -8241,7 +8204,7 @@ function _objectWithoutPropertiesLoose(r, e) {
   if (null == r) return {};
   var t = {};
   for (var n in r) if ({}.hasOwnProperty.call(r, n)) {
-    if (e.includes(n)) continue;
+    if (-1 !== e.indexOf(n)) continue;
     t[n] = r[n];
   }
   return t;

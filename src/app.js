@@ -13,6 +13,11 @@ import { ModuleProvider } from './contexts/ModuleContext.jsx';
 //const disableBody = (target) => disableBodyScroll(target);
 //const enableBody = (target) => enableBodyScroll(target);
 
+import Synchronization from "./components/Synchronization/Synchronization";
+import Courses from "./components/Courses/Courses";
+import Enrollment from "./components/Enrollment/Enrollment";
+
+
 const Route = () => {
     const currentTab = new URLSearchParams(useLocation().hash);
     return (
