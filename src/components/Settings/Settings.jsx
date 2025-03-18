@@ -29,17 +29,13 @@ const Settings = () => {
         // get the setting context
         const { setting, settingName, setSetting } = useSetting();
         const settingModal = getSettingById( settingsArray, currentTab );
-        console.log('appLocalizer:', appLocalizer);
-        console.log('appLocalizer.settings_databases_value:', appLocalizer.settings_databases_value);
-        console.log('currentTab:', currentTab);
-        console.log('Value for currentTab:', appLocalizer.settings_databases_value?.[currentTab]);
-        
+
         if ( settingName != currentTab ) {
-            setSetting( currentTab, appLocalizer.settings_databases_value[currentTab] || {} );
+            setSetting(currentTab, appLocalizer.preSettings[currentTab] || {});
         }
         
         useEffect(() => {
-            appLocalizer.settings_databases_value[settingName] = setting;
+            appLocalizer.preSettings[settingName] = setting;
         }, [setting]);
 
         // Reander spacial component...
