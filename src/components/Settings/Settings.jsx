@@ -33,13 +33,12 @@ const Settings = () => {
         if ( settingName != currentTab ) {
             setSetting(currentTab, appLocalizer.preSettings[currentTab] || {});
         }
-        
         useEffect(() => {
             appLocalizer.preSettings[settingName] = setting;
         }, [setting]);
 
         // Reander spacial component...
-        if ( currentTab === 'faq' ) {
+        if ( currentTab === 'support' ) {
             return (
                 <Support
                     content={settingModal}
