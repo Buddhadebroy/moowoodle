@@ -6,19 +6,10 @@
  * Get Setting JSON data as object.
  * @return {Array} Array of Object.
  */
-const getTemplateData = ( tamplate = 'settings' ) => {
+const getTemplateData = () => {
 
-    // Load the context base on template
-    let context = undefined;
-
-    switch ( tamplate ) {
-        case 'settings':
-            context = require.context('../template/settings', true, /\.js$/); // Adjust the folder path and file extension
-            break;
-        case 'synchronizations':
-            context = require.context('../template/synchronizations', true, /\.js$/);
-            break;
-    }
+    // Required the context.
+    const context = require.context( '../template/settings', true, /\.js$/ ); // Adjust the folder path and file extension
 
     // Prepare the structure here...
     function importAll(context) {
@@ -55,4 +46,8 @@ const getTemplateData = ( tamplate = 'settings' ) => {
     return settings;
 };
 
-export { getTemplateData };
+const getModuleData = () => {
+   const moduleData = require('../template/modules/index').default;
+   return moduleData;
+}
+export { getTemplateData, getModuleData };

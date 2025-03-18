@@ -14,7 +14,7 @@ import { getApiLink, sendApiResponse } from "../../services/apiService";
 import { getTemplateData } from "../../services/templateService";
 
 // import utility function
-import { getAvialableSettings, getSettingById } from "../../utiles/settingUtil";
+import {  getAvialableSettings, getSettingById } from "../../utiles/settingUtil";
 import { useState, useEffect } from "react";
 
 const Settings = () => {
@@ -23,25 +23,25 @@ const Settings = () => {
     const settingsArray = getAvialableSettings(getTemplateData(), []);
 
     // get current browser location
-    const location = new URLSearchParams(useLocation().hash);
-
+    const location = new URLSearchParams( useLocation().hash );
+    
     // Render the dinamic form.
     const getForm = (currentTab) => {
 
         // get the setting context
         const { setting, settingName, setSetting } = useSetting();
-        const settingModal = getSettingById(settingsArray, currentTab);
+        const settingModal = getSettingById( settingsArray, currentTab );
 
-        if (settingName != currentTab) {
-            setSetting(currentTab, appLocalizer.preSettings[currentTab] || {});
+        if ( settingName != currentTab ) {
+            setSetting( currentTab, appLocalizer.settings_databases_value[currentTab] || {} );
         }
 
         useEffect(() => {
-            appLocalizer.preSettings[settingName] = setting;
+            appLocalizer.settings_databases_value[settingName] = setting;
         }, [setting]);
 
         // Reander spacial component...
-        if (currentTab === 'support') {
+        if ( currentTab === 'faq' ) {
             return (
                 <Support
                     content={settingModal}
@@ -51,7 +51,7 @@ const Settings = () => {
 
         return (
             <>
-                {settingName === currentTab ? <DynamicForm setting={settingModal} proSetting={appLocalizer.pro_settings_list} /> : <>Loading</>}
+                { settingName === currentTab ? <DynamicForm setting={ settingModal } proSetting={appLocalizer.pro_settings_list} /> : <>Loading</> }
             </>
         );
     }
@@ -60,11 +60,11 @@ const Settings = () => {
         <>
             <SettingProvider>
                 <Tabs
-                    tabData={settingsArray}
-                    currentTab={location.get('sub-tab')}
+                    tabData={ settingsArray }
+                    currentTab={ location.get( 'subtab' ) }
                     getForm={getForm}
-                    BannerSection={!appLocalizer.khali_dabba && BannerSection}
-                    prepareUrl={(subTab) => `?page=moowoodle#&tab=settings&sub-tab=${subTab}`}
+                    BannerSection = { BannerSection }
+                    prepareUrl={(subTab) => `?page=plugin-elements#&tab=settings&subtab=${subTab}` }
                 />
             </SettingProvider>
         </>
